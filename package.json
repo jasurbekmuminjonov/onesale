@@ -1,0 +1,24 @@
+{
+  "name": "onesale",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev --prefix server\" \"npm start --prefix client\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jasurbekmuminjonov/onesale.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/jasurbekmuminjonov/onesale/issues"
+  },
+  "homepage": "https://github.com/jasurbekmuminjonov/onesale#readme",
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

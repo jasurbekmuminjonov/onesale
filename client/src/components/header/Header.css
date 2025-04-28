@@ -1,0 +1,40 @@
+header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: var(--main-color);
+  padding: 15px;
+  color: var(--bg-color);
+  height: 50px;
+  padding-top: 15px;
+  border-left: 1px solid #fff;
+}
+
+header button {
+  display: none;
+}
+
+.dollarRate {
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  font-size: 14px;
+}
+
+/* Media */
+
+@media (max-width: 500px) {
+  header button {
+    display: block;
+    border: none;
+    background: transparent;
+    color: var(--bg-color);
+    font-size: 20px;
+    cursor: pointer;
+  }
+
+  header button:hover {
+    color: #ffbb00;
+  }
+}
