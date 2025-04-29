@@ -1,8 +1,8 @@
 import { createApi, fetchBaseQuery, retry } from "@reduxjs/toolkit/query/react";
 
 const baseQuery = fetchBaseQuery({
-  baseUrl: "http://localhost:8080/",
-  // baseUrl: "https://icecream-crm-server.vercel.app/",
+  // baseUrl: "http://localhost:8080/",
+  baseUrl: "https://apionesale.vercel.app/",
   prepareHeaders: (headers) => {
     const token = localStorage.getItem("token");
     if (token) {
