@@ -1,5 +1,5 @@
 import { TbPackageImport, TbUserUp, TbUserDown } from "react-icons/tb";
-import { FaCoins } from "react-icons/fa";
+import { FaClipboardList, FaCoins } from "react-icons/fa";
 import { TiShoppingCart } from "react-icons/ti";
 import { AiFillProduct } from "react-icons/ai";
 import { RiAnticlockwiseFill } from "react-icons/ri";
@@ -16,9 +16,19 @@ export const adminItems = [
         label: "Import"
     },
     {
+        icon: <FaClipboardList  size={20} />,
+        path: '/import-history',
+        label: "Import tarixi"
+    },
+    {
         icon: <TiShoppingCart size={20} />,
         path: '/sale',
         label: "Sotuv"
+    },
+    {
+        icon: <FaClipboardList  size={20} />,
+        path: '/sale-history',
+        label: "Sotuv tarixi"
     },
     {
         icon: <FaCoins size={20} />,

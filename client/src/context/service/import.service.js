@@ -8,6 +8,7 @@ export const importApi = api.injectEndpoints({
                 method: "POST",
                 body,
             }),
+            invalidatesTags: ["Import"],
         }),
 
         getImports: builder.query({
@@ -15,14 +16,15 @@ export const importApi = api.injectEndpoints({
                 url: "/imports",
                 method: "GET",
             }),
+            providesTags: ["Import"],
         }),
 
         completeImport: builder.mutation({
-            query: ({ id, body }) => ({
+            query: ({ id }) => ({
                 url: `/import/complete/${id}`,
-                method: "PUT",
-                body,
+                method: "PUT"
             }),
+            invalidatesTags: ["Import"],
         }),
 
         cancelImport: builder.mutation({
@@ -30,6 +32,7 @@ export const importApi = api.injectEndpoints({
                 url: `/import/cancel/${id}`,
                 method: "PUT",
             }),
+            invalidatesTags: ["Import"],
         }),
 
         payImportDebt: builder.mutation({
@@ -38,6 +41,7 @@ export const importApi = api.injectEndpoints({
                 method: "PUT",
                 body,
             }),
+            invalidatesTags: ["Import"],
         }),
     }),
 });

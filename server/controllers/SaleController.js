@@ -53,7 +53,11 @@ exports.createSale = async (req, res) => {
 
         await sale.save();
 
-        res.status(201).json({ message: 'Savdo muvaffaqiyatli yaratildi' });
+        const savedSale = await Sale.findById(sale._id)
+            .populate('products.productId')
+            .populate('customerId');
+
+        res.status(201).json({ message: 'Savdo muvaffaqiyatli yaratildi', sale: savedSale });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server error' });

@@ -8,6 +8,7 @@ export const saleApi = api.injectEndpoints({
                 method: "POST",
                 body,
             }),
+            invalidatesTags: ["Sale"],
         }),
 
         getSales: builder.query({
@@ -15,6 +16,7 @@ export const saleApi = api.injectEndpoints({
                 url: "/sales",
                 method: "GET",
             }),
+            providesTags: ["Sale"],
         }),
 
         payDebt: builder.mutation({
@@ -23,6 +25,7 @@ export const saleApi = api.injectEndpoints({
                 method: "PUT",
                 body,
             }),
+            invalidatesTags: ["Sale"],
         }),
     }),
 });

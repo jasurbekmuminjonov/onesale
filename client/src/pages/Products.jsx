@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     Tabs,
     Table,
@@ -8,85 +8,130 @@ import {
     message,
     Row,
     Col,
-    Select,
     Space,
-    Popconfirm,
+    Switch,
+    Modal,
+    Select,
 } from "antd";
-import { useGetProductTypesQuery } from '../context/service/productType.service';
-import { MdDeleteForever, MdEdit } from "react-icons/md";
-import { useCreateProductMutation, useDeleteProductMutation, useGetProductsQuery, useUpdateProductMutation } from '../context/service/products.service';
-import moment from 'moment';
+import { MdEdit } from "react-icons/md";
+import { useCreateProductMutation, useLazyGetProductByBarcodeQuery, useUpdateProductMutation, useUpdateProductStockMutation, useLazyGetProductByNameQuery } from '../context/service/product.service';
+import { LuClipboardList } from "react-icons/lu";
+import { FaCheck } from "react-icons/fa";
+
+
 const Products = () => {
     const [form] = Form.useForm();
     const [createProduct] = useCreateProductMutation()
+    const [isOpen, setIsOpen] = useState(false)
+    const [selectedProduct, setSelectedProduct] = useState(null)
     const [updateProduct] = useUpdateProductMutation()
-    const [deleteProduct] = useDeleteProductMutation()
-    const { data: productType = [] } = useGetProductTypesQuery()
-    const { data: product = [], isLoading } = useGetProductsQuery()
+    const [newQuantities, setNewQuantities] = useState({});
+    const [updateProductStock] = useUpdateProductStockMutation()
+    const [searchType, setSearchType] = useState(false)
+    const [data, setData] = useState([])
+    const inputRef = useRef()
+    const [getProductByBarcode, { data: barcodeData, isLoading: barcodeIsLoading, error: barcodeError }] = useLazyGetProductByBarcodeQuery()
+    const [getProductByName, { data: nameData, isLoading: nameIsLoading, error: nameError }] = useLazyGetProductByNameQuery()
     const [currentTab, setCurrentTab] = useState('1')
     const [selectedItem, setSelectedItem] = useState("");
-    const packageTypes = {
-        piece: "Dona",
-        box: "Quti"
-    }
     const columns = [
-        { title: "Mahsulot nomi", dataIndex: "productTypeId", render: (text) => text.name },
-        { title: "Qadoq turi", dataIndex: "productTypeId", render: (text) => packageTypes[text.packageType] },
-        { title: "Jami dona soni", dataIndex: "totalPieceQuantity" },
-        { title: "Qutidagi dona soni", dataIndex: "productTypeId", render: (text) => text.packageType === "piece" ? "-" : text.pieceQuantityPerBox },
-        { title: "Jami quti soni", dataIndex: "productTypeId", render: (text, record) => text.packageType === "piece" ? "-" : (record.totalPieceQuantity / text.pieceQuantityPerBox).toFixed() },
-        { title: "Sotib olish narxi", dataIndex: "unitPurchasePrice" },
-        { title: "Sotish narxi", dataIndex: "unitSellingPrice" },
-        { title: "Kiritilgan sana", dataIndex: "createdAt", render: (text) => moment(text).format("DD.MM.YYYY") },
+        { title: "№", render: (text, record, index) => (index + 1) },
+        { title: "Mahsulot nomi", dataIndex: "productName" },
+        { title: "Jami miqdori", dataIndex: "stock", render: (text) => text.reduce((acc, item) => acc + item.quantity, 0) },
+        { title: "Sotib olish narxi", dataIndex: "purchasePrice", render: (text) => text.toLocaleString() },
+        { title: "Sotish narxi", dataIndex: "salePrice", render: (text) => text.toLocaleString() },
+        { title: "Optom sotish narxi", dataIndex: "salePriceOptom", render: (text) => text.toLocaleString() },
+        { title: "Barkod", dataIndex: "barcode" },
+        { title: "O'lchov birligi", dataIndex: "unitMeasure" },
         {
-            title: "Amallar", render: (_, record) => (
-                <Space>
-                    <Button
-                        onClick={() => {
-                            setSelectedItem(record._id);
-                            form.setFieldsValue({
-                                productTypeId: record.productTypeId._id,
-                                totalPieceQuantity: record.productTypeId.packageType === "box" ? (record.totalPieceQuantity / record.productTypeId.pieceQuantityPerBox).toFixed() : record.totalPieceQuantity,
-                                unitPurchasePrice: record.unitPurchasePrice,
-                                unitSellingPrice: record.unitSellingPrice,
-                            });
-                            setCurrentTab("2");
-                        }}
-                        type="primary"
-                        style={{ background: "#f4a62a" }}
-                        icon={<MdEdit />}
-                    ></Button>
-                    <Popconfirm
-                        onConfirm={() => handleDelete(record._id)}
-                        title="Chindan ham mahsulotni butunlay o'chirmoqchimisiz?"
-                        onCancel={() => { }}
-                    >
-                        <Button type="primary" danger icon={<MdDeleteForever />}></Button>
-                    </Popconfirm>
-                </Space >
+            title: "Actions", render: (_, record) => (
+                <Space size="middle">
+                    <Button title="Inventar" onClick={() => {
+                        setSelectedProduct(record._id);
+                        setIsOpen(true);
+                    }}>
+                        <LuClipboardList />
+                    </Button>
+                    <Button title='Tahrirlash' onClick={() => {
+                        setSelectedItem(record._id)
+                        form.setFieldsValue({
+                            productName: record.productName,
+                            barcode: record.barcode,
+                            purchasePrice: record.purchasePrice,
+                            salePrice: record.salePrice,
+                            salePriceOptom: record.salePriceOptom,
+                            unitMeasure: record.unitMeasure,
+
+                        })
+                        setCurrentTab("2")
+                    }}>
+                        <MdEdit />
+                    </Button>
+                </Space>
             )
         }
     ]
-    const handleDelete = async (id) => {
+    useEffect(() => {
+        const handleContextMenu = (e) => {
+            e.preventDefault();
+            setSearchType(prev => !prev);
+            inputRef.current.focus();
+        };
+
+        window.addEventListener('contextmenu', handleContextMenu);
+
+        return () => {
+            window.removeEventListener('contextmenu', handleContextMenu);
+        };
+    }, []);
+
+    async function handleSearch(value) {
         try {
-            await deleteProduct(id).unwrap();
-            message.success("Mahsulot muvaffaqiyatli o'chirildi");
-        } catch (error) {
-            message.error("Mahsulotni o'chirishda xatolik: " + error.data.message);
+            if (!searchType) {
+                const res = await getProductByBarcode(value).unwrap()
+                setData(res)
+            } else {
+                const res = await getProductByName(value).unwrap()
+                setData(res)
+            }
+        } catch (err) {
+            console.log(err)
         }
     }
+
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.code === "Space") {
+                const active = document.activeElement;
+                const isFormElement =
+                    active.tagName === "INPUT" ||
+                    active.tagName === "TEXTAREA" ||
+                    active.tagName === "SELECT" ||
+                    active.isContentEditable;
+                if (!isFormElement) {
+                    e.preventDefault();
+                    inputRef.current?.focus();
+                }
+            }
+        };
+
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, []);
+
     const onFinish = async (values) => {
         try {
             let data = {
-                productTypeId: values.productTypeId,
-                totalPieceQuantity: Number(values.totalPieceQuantity),
-                unitPurchasePrice: Number(values.unitPurchasePrice),
-                unitSellingPrice: Number(values.unitSellingPrice),
+                productName: values.productName,
+                barcode: values.barcode,
+                unitMeasure: values.unitMeasure,
+                purchasePrice: Number(values.purchasePrice),
+                salePrice: Number(values.salePrice),
+                salePriceOptom: Number(values.salePriceOptom),
             };
             let res;
             if (selectedItem) {
                 res = await updateProduct({ id: selectedItem, body: data });
-
             } else {
                 res = await createProduct(data).unwrap();
             }
@@ -102,8 +147,78 @@ const Products = () => {
             message.error("Mahsulotni qo'shishda xatolik: " + error.data.message);
         }
     };
+
     return (
         <div className='products'>
+            <Modal width={600} open={isOpen} onCancel={() => {
+                setIsOpen(false)
+                setSelectedItem("");
+                setSelectedProduct(null)
+                setNewQuantities({})
+            }}
+                title="Tovar miqdori"
+                footer={[]}
+            >
+                <Table size='small' dataSource={data.find(item => item._id === selectedProduct)?.stock} columns={[
+                    { title: "Miqdor", dataIndex: "quantity" },
+                    { title: "Sotib olish narxi", dataIndex: "purchasePrice", render: (text) => text.toLocaleString() },
+                    { title: "Sotish narxi", dataIndex: "salePrice", render: (text) => text.toLocaleString() },
+                    { title: "Optom sotish narxi", dataIndex: "salePriceOptom", render: (text) => text.toLocaleString() },
+                    {
+                        title: "Miqdorni sozlash", render: (_, record) => (
+                            <Space size="small">
+                                <Input
+                                    min={0}
+                                    value={newQuantities[record.date] || ""}
+                                    onChange={(e) =>
+                                        setNewQuantities({
+                                            ...newQuantities,
+                                            [record.date]: e.target.value,
+                                        })
+                                    }
+                                    width={30}
+                                    type="number"
+                                    placeholder="Yangi miqdor"
+                                />
+
+                                <Button
+                                    onClick={async () => {
+                                        try {
+                                            const res = await updateProductStock({
+                                                productId: selectedProduct,
+                                                stockDate: record.date,
+                                                quantity: newQuantities[record.date],
+                                            }).unwrap();
+                                            message.success(res.message);
+                                            setIsOpen(false);
+                                            setSelectedProduct(null);
+                                            setNewQuantities({ ...newQuantities, [record.date]: null });
+                                        } catch (error) {
+                                            console.log(error);
+                                            message.error("Miqdorni yangilashda xatolik: " + error.data.message);
+                                        }
+                                    }}
+                                    disabled={!newQuantities[record.date]}
+                                    type="primary"
+                                >
+                                    <FaCheck />
+                                </Button>
+
+                            </Space>
+                        )
+                    }
+                ]} />
+            </Modal>
+            <div className="products-header" style={{ display: "flex", gap: "12px", padding: "12px" }}>
+                <Space>
+                    <Input ref={inputRef} onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                            handleSearch(e.target.value);
+                        }
+                    }} autoFocus style={{ width: "500px", height: "50px", fontSize: "20px" }} placeholder={!searchType ? "Barkod bilan qidirish" : "Nomi bilan qidirish"} onSubmit={(value) => handleSearch(value)} />
+                    <Switch title="Qidiruv turini almashtirish" value={searchType} checkedChildren="Nomi" unCheckedChildren="Barkod" onChange={(value) => setSearchType(value)} />
+                </Space>
+            </div>
             <Tabs activeKey={currentTab}
                 onChange={(key) => {
                     setCurrentTab(key);
@@ -111,7 +226,7 @@ const Products = () => {
                 }}
             >
                 <Tabs.TabPane tab="Mahsulotlar" key="1">
-                    <Table style={{ overflowX: "auto" }} size="small" dataSource={product} loading={isLoading} columns={columns} />
+                    <Table style={{ overflowX: "auto" }} size="small" dataSource={data} loading={barcodeIsLoading || nameIsLoading} columns={columns} />
                 </Tabs.TabPane>
                 <Tabs.TabPane tab="Mahsulot qo'shish" key="2">
                     <Form
@@ -121,60 +236,32 @@ const Products = () => {
                         form={form}
                     >
                         <Row gutter={16}>
-                            <Col span={12}>
-                                <Form.Item
-                                    label="Mahsulot turi"
-                                    name={"productTypeId"}
-                                    rules={[
-                                        { required: true, message: "Mahsulot turini tanlash shart" }
-                                    ]}
-                                >
-                                    <Select
-                                        showSearch
-                                        placeholder="Mahsulot turini tanlang"
-                                        optionFilterProp="children"
-                                        filterOption={(input, option) =>
-                                            option.children.toLowerCase().includes(input.toLowerCase())
-                                        }>
-                                        {productType.map((item) => (
-                                            <Select.Option key={item._id} value={item._id}>
-                                                {item.name}
-                                            </Select.Option>
-                                        ))}
-                                    </Select>
+                            <Col span={8}>
+                                <Form.Item label="Mahsulot nomi" name="productName" rules={[{ required: true, message: "Mahsulot nomini kiritish shart" }]}>
+                                    <Input placeholder="Mahsulot nomi" />
                                 </Form.Item>
                             </Col>
-                            <Col span={12}>
-                                <Form.Item
-                                    shouldUpdate={(prev, next) => prev.productTypeId !== next.productTypeId}
-                                >
-                                    {({ getFieldValue }) => {
-                                        const isBox = productType.find(pr => pr._id === getFieldValue("productTypeId"))?.packageType === "box";
-                                        return (
-                                            <Form.Item
-                                                label={isBox ? "Quti soni" : "Jami dona soni"}
-                                                name="totalPieceQuantity"
-                                                rules={
-                                                    isBox
-                                                        ? [{ required: true, message: "Quti sonini kiritish shart" }]
-                                                        : [{ required: true, message: "Jami dona sonini kiritish shart" }]
-                                                }
-                                            >
-                                                <Input
-                                                    placeholder="25"
-                                                    type="number"
-                                                />
-                                            </Form.Item>
-                                        );
-                                    }}
+                            <Col span={8}>
+                                <Form.Item label="Barkod" name="barcode" rules={[{ required: true, message: "Barkodni kiritish shart" }]}>
+                                    <Input placeholder="Barkod" />
+                                </Form.Item>
+                            </Col>
+                            <Col span={8}>
+                                <Form.Item label="O'lchov birlik" name="unitMeasure" rules={[{ required: true, message: "O'lchov birlikni tanlash shart" }]}>
+                                    <Select defaultValue="Штука" options={[
+                                        { label: "Штука", value: "Штука" },
+                                        { label: "Грамм", value: "Грамм" },
+                                        { label: "Литр", value: "Литр" },
+                                        { label: "Коробка", value: "Коробка" },
+                                    ]} />
                                 </Form.Item>
                             </Col>
                         </Row>
                         <Row gutter={16}>
-                            <Col span={12}>
+                            <Col span={8}>
                                 <Form.Item
                                     label="Dona tan narxi"
-                                    name="unitPurchasePrice"
+                                    name="purchasePrice"
                                     rules={
                                         [{ required: true, message: "Dona tan narxini kiritish shart" }]
                                     }
@@ -185,16 +272,30 @@ const Products = () => {
                                     />
                                 </Form.Item>
                             </Col>
-                            <Col span={12}>
+                            <Col span={8}>
                                 <Form.Item
                                     label="Dona sotish narxi"
-                                    name="unitSellingPrice"
+                                    name="salePrice"
                                     rules={
                                         [{ required: true, message: "Dona sotish narxini kiritish shart" }]
                                     }
                                 >
                                     <Input
                                         placeholder="3000"
+                                        type="number"
+                                    />
+                                </Form.Item>
+                            </Col>
+                            <Col span={8}>
+                                <Form.Item
+                                    label="Dona optom sotish narxi"
+                                    name="salePriceOptom"
+                                    rules={
+                                        [{ required: true, message: "Dona optom sotish narxini kiritish shart" }]
+                                    }
+                                >
+                                    <Input
+                                        placeholder="2200"
                                         type="number"
                                     />
                                 </Form.Item>
@@ -210,7 +311,7 @@ const Products = () => {
                     </Form>
                 </Tabs.TabPane>
             </Tabs>
-        </div>
+        </div >
     );
 };
 

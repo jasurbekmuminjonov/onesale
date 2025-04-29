@@ -33,7 +33,7 @@ exports.createImport = async (req, res) => {
 exports.getImports = async (req, res) => {
     try {
         const { storeId } = req.user
-        const imports = await ImportModel.find({ storeId }).populate('products.productId').sort({ createdAt: -1 });
+        const imports = await ImportModel.find({ storeId }).populate('products.productId').populate("supplierId").sort({ date: -1 });
         return res.status(200).json(imports);
 
     } catch (err) {
@@ -45,7 +45,6 @@ exports.getImports = async (req, res) => {
 exports.completeImport = async (req, res) => {
     try {
         const { id } = req.params;
-        const { paidAmount, paymentMethod } = req.body;
         const importData = await ImportModel.findById(id);
 
         for (const item of importData.products) {
@@ -74,17 +73,6 @@ exports.completeImport = async (req, res) => {
             await product.save();
         }
 
-        if (paidAmount > 0) {
-            importData.paidAmount += paidAmount;
-            importData.paymentLog.push({
-                paymentMethod,
-                amount: paidAmount
-            });
-        }
-        if (importData.paidAmount >= importData.totalAmount) {
-            importData.isDebt = false;
-        }
-
         importData.status = 'completed';
         await importData.save();
         return res.status(200).json({ message: "Import muvaffaqiyatli tugallandi" });
@@ -100,7 +88,7 @@ exports.cancelImport = async (req, res) => {
     try {
         const { id } = req.params;
         const importData = await ImportModel.findById(id);
-        importData.status = 'canceled'
+        importData.status = 'cancelled'
         await importData.save();
         return res.status(200).json({ message: "Import muvaffaqiyatli bekor qilindi" });
 

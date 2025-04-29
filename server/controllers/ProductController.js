@@ -16,7 +16,8 @@ exports.createProduct = async (req, res) => {
 
 exports.getProductByBarcode = async (req, res) => {
     try {
-        const { barcode } = req.params;
+        const { barcode } = req.query;
+        if (!barcode) return res.json([])
         const { storeId } = req.user;
         const product = await Product.find({ barcode });
         if (!product) return res.status(404).json({ message: "Mahsulot topilmadi" });
@@ -40,3 +41,43 @@ exports.updateProduct = async (req, res) => {
         return res.status(500).json({ message: "Serverda xatolik" });
     }
 }
+exports.updateProductStock = async (req, res) => {
+    try {
+        const { productId, stockDate, quantity } = req.body;
+        const product = await Product.findById(productId);
+        const stockItem = product.stock.find(item =>
+            new Date(item.date).getTime() === new Date(stockDate).getTime()
+        );
+        stockItem.quantity = quantity;
+        stockItem.totalSold = 0;
+        await product.save();
+        return res.status(200).json({ message: "Mahsulot miqdori tahrirlandi" });
+
+    } catch (err) {
+        console.log(err.message)
+        return res.status(500).json({ message: "Serverda xatolik" });
+    }
+}
+exports.getProductsByName = async (req, res) => {
+    const { name } = req.query;
+    if (!name) return res.json([])
+
+    const decodedName = decodeURIComponent(name);
+    console.log(decodedName);
+
+    const { storeId } = req.user;
+
+    try {
+        const products = await Product.find(
+            {
+                productName: { $regex: decodedName, $options: 'i' },
+                // storeId: storeId
+            }
+        );
+
+        res.status(200).json(products);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Serverda xatolik yuz berdi" });
+    }
+};

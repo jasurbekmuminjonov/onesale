@@ -53,7 +53,7 @@ const Sidebar = () => {
       <div style={{ padding: "16px", textAlign: "center" }}>
         {!collapsed && (
           <Title level={5} style={{ color: "white", margin: 0 }}>
-            Kompaniya
+            OneSale
           </Title>
         )}
       </div>
