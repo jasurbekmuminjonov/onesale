@@ -3,7 +3,7 @@ const { createStore, loginUser, createEmployee, createCustomer, createSupplier, 
 const { authMiddleware } = require("./middlewares/authMiddleware");
 const { createProduct, getProductByBarcode, updateProduct, getProductsByName, updateProductStock } = require("./controllers/ProductController");
 const { createImport, getImports, completeImport, payImportDebt, cancelImport } = require("./controllers/ImportController");
-const { createSale, getSales, payDebt, createReturn, getReturns } = require("./controllers/saleController");
+const { createSale, getSales, payDebt, createReturn, getReturns } = require("./controllers/SaleController");
 const { createExpense, getExpenses } = require("./controllers/ExpenseController");
 const rt = express.Router();
 
