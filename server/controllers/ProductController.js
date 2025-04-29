@@ -71,7 +71,7 @@ exports.getProductsByName = async (req, res) => {
         const products = await Product.find(
             {
                 productName: { $regex: decodedName, $options: 'i' },
-                // storeId: storeId
+                storeId: storeId
             }
         );
 
