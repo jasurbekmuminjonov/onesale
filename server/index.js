@@ -7,7 +7,7 @@ const cors = require('cors');
 const app = express();
 
 app.use(cors({
-    origin: ["http://localhost:3000", "https://apionesale.vercel.app/"]
+    origin: ["http://localhost:3000", "https://onesaleuz.vercel.app/"]
 }));
 app.use(express.json());
 app.use("/", require("./routes"))
