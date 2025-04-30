@@ -81,3 +81,22 @@ exports.getProductsByName = async (req, res) => {
         res.status(500).json({ message: "Serverda xatolik yuz berdi" });
     }
 };
+exports.getPaginatedProducts = async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = 10;
+        const skip = (page - 1) * limit;
+
+        const [products, total] = await Promise.all([
+            Product.find().skip(skip).limit(limit).lean(),
+            Product.countDocuments()
+        ]);
+
+        res.status(200).json({
+            data: products,
+            total
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Server xatosi', error });
+    }
+};

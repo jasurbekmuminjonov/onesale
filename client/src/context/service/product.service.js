@@ -17,6 +17,13 @@ export const productApi = api.injectEndpoints({
       }),
       providesTags: ["Product"],
     }),
+    getProductByPage: builder.query({
+      query: (page) => ({
+        url: `/product?page=${page}`,
+        method: "GET",
+      }),
+      providesTags: ["Product"],
+    }),
     getProductByName: builder.query({
       query: (name) => ({
         url: `/product/name?name=${encodeURIComponent(name)}`,
@@ -51,4 +58,5 @@ export const {
   useLazyGetProductByNameQuery,
   useUpdateProductMutation,
   useUpdateProductStockMutation,
+  useLazyGetProductByPageQuery
 } = productApi;

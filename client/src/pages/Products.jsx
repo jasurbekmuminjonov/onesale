@@ -14,9 +14,10 @@ import {
     Select,
 } from "antd";
 import { MdEdit } from "react-icons/md";
-import { useCreateProductMutation, useLazyGetProductByBarcodeQuery, useUpdateProductMutation, useUpdateProductStockMutation, useLazyGetProductByNameQuery } from '../context/service/product.service';
+import { useCreateProductMutation, useLazyGetProductByBarcodeQuery, useUpdateProductMutation, useUpdateProductStockMutation, useLazyGetProductByNameQuery, useLazyGetProductByPageQuery } from '../context/service/product.service';
 import { LuClipboardList } from "react-icons/lu";
 import { FaCheck } from "react-icons/fa";
+import { MdOutlineClear } from "react-icons/md";
 
 
 const Products = () => {
@@ -31,9 +32,50 @@ const Products = () => {
     const [data, setData] = useState([])
     const inputRef = useRef()
     const [getProductByBarcode, { data: barcodeData, isLoading: barcodeIsLoading, error: barcodeError }] = useLazyGetProductByBarcodeQuery()
+    const [getProductByPage, { data: pageData, isLoading: pageIsLoading, error: pageError }] = useLazyGetProductByPageQuery()
     const [getProductByName, { data: nameData, isLoading: nameIsLoading, error: nameError }] = useLazyGetProductByNameQuery()
     const [currentTab, setCurrentTab] = useState('1')
     const [selectedItem, setSelectedItem] = useState("");
+    const [filters, setFilters] = useState({
+        sort: ''
+    });
+    const [value, setValue] = useState('');
+
+    const [pagination, setPagination] = useState({
+        current: 1,
+        pageSize: 10,
+        total: 0,
+    });
+    useEffect(() => {
+        if (value) {
+            return
+        } else {
+            getProductByPage(pagination.current).unwrap().then((res) => {
+                setData(res.data || []);
+                setPagination({
+                    ...pagination,
+                    total: res?.total || 0,
+                });
+            });
+        }
+    }, [pagination.current]);
+
+    const handleTableChange = async (pagination) => {
+        try {
+            if (value) {
+                setPagination(pagination);
+            } else {
+                const res = await getProductByPage(pagination.current).unwrap();
+                setData(res.data || []);
+                setPagination({
+                    ...pagination,
+                    total: res?.total || 0,
+                });
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    };
     const columns = [
         { title: "№", render: (text, record, index) => (index + 1) },
         { title: "Mahsulot nomi", dataIndex: "productName" },
@@ -41,7 +83,25 @@ const Products = () => {
         { title: "Sotib olish narxi", dataIndex: "purchasePrice", render: (text) => text.toLocaleString() },
         { title: "Sotish narxi", dataIndex: "salePrice", render: (text) => text.toLocaleString() },
         { title: "Optom sotish narxi", dataIndex: "salePriceOptom", render: (text) => text.toLocaleString() },
-        { title: "Barkod", dataIndex: "barcode" },
+        {
+            title: "Barkod",
+            dataIndex: "barcode",
+            render: (text) => (
+                <span
+                    onClick={() => {
+                        navigator.clipboard.writeText(text);
+                        message.success("Barkod nusxalandi!");
+                    }}
+                    style={{
+                        cursor: "pointer",
+                        textDecoration: "underline dotted",
+                    }}
+                    title="Nusxalash uchun bosing"
+                >
+                    {text}
+                </span>
+            ),
+        },
         { title: "O'lchov birligi", dataIndex: "unitMeasure" },
         {
             title: "Actions", render: (_, record) => (
@@ -77,7 +137,6 @@ const Products = () => {
             setSearchType(prev => !prev);
             inputRef.current.focus();
         };
-
         window.addEventListener('contextmenu', handleContextMenu);
 
         return () => {
@@ -87,18 +146,36 @@ const Products = () => {
 
     async function handleSearch(value) {
         try {
-            if (!searchType) {
-                const res = await getProductByBarcode(value).unwrap()
+            if (!value) {
+                const res = await getProductByPage(pagination.current).unwrap()
                 setData(res)
+                setPagination({
+                    ...pagination,
+                    total: res?.data.length || 0,
+                })
+                return
             } else {
-                const res = await getProductByName(value).unwrap()
-                setData(res)
+
+                if (!searchType) {
+                    const res = await getProductByBarcode(value).unwrap()
+                    setData(res)
+                    setPagination({
+                        ...pagination,
+                        total: res?.length || 0,
+                    })
+                } else {
+                    const res = await getProductByName(value).unwrap()
+                    setData(res)
+                    setPagination({
+                        ...pagination,
+                        total: res?.length || 0,
+                    })
+                }
             }
         } catch (err) {
             console.log(err)
         }
     }
-
     useEffect(() => {
         const handleKeyDown = (e) => {
             if (e.code === "Space") {
@@ -143,10 +220,70 @@ const Products = () => {
             setSelectedItem("");
             form.resetFields();
             setCurrentTab("1");
+            await refreshTable();
+            setValue("")
         } catch (error) {
             message.error("Mahsulotni qo'shishda xatolik: " + error.data.message);
         }
     };
+
+    const handleClear = async () => {
+        setValue("");
+        if (inputRef.current) {
+            inputRef.current.focus();
+        }
+        try {
+            const data = await getProductByPage(pagination.current).unwrap();
+            setData(data.data || []);
+            setPagination({ ...pagination, total: data.total || 0 });
+        } catch (err) {
+            console.error('Ma\'lumotni olishda xatolik:', err);
+        }
+    };
+
+    const refreshTable = async () => {
+        const res = await getProductByPage(1).unwrap();
+        setData(res.data || []);
+        setPagination({ ...pagination, total: res.total, current: 1 || 0 });
+    };
+    useEffect(() => {
+        const applySorting = async () => {
+            if (!filters?.sort) {
+                try {
+                    const res = await getProductByPage(pagination.current).unwrap();
+                    setData(res.data || []);
+                    setPagination(prev => ({
+                        ...prev,
+                        total: res?.total || 0,
+                    }));
+                } catch (err) {
+                    console.error("Ma'lumotni qayta olishda xatolik:", err);
+                }
+                return;
+            }
+
+            const sortedData = [...data];
+            if (filters.sort === "quantity_inc") {
+                sortedData.sort((a, b) => {
+                    const totalA = a.stock.reduce((acc, item) => acc + item.quantity, 0);
+                    const totalB = b.stock.reduce((acc, item) => acc + item.quantity, 0);
+                    return totalA - totalB;
+                });
+            } else if (filters.sort === "quantity_dec") {
+                sortedData.sort((a, b) => {
+                    const totalA = a.stock.reduce((acc, item) => acc + item.quantity, 0);
+                    const totalB = b.stock.reduce((acc, item) => acc + item.quantity, 0);
+                    return totalB - totalA;
+                });
+            }
+
+            setData(sortedData);
+        };
+
+        applySorting();
+    }, [filters]);
+
+
 
     return (
         <div className='products'>
@@ -159,7 +296,7 @@ const Products = () => {
                 title="Tovar miqdori"
                 footer={[]}
             >
-                <Table size='small' dataSource={data.find(item => item._id === selectedProduct)?.stock} columns={[
+                <Table rowKey="_id" size='small' dataSource={data?.find(item => item._id === selectedProduct)?.stock} columns={[
                     { title: "Miqdor", dataIndex: "quantity" },
                     { title: "Sotib olish narxi", dataIndex: "purchasePrice", render: (text) => text.toLocaleString() },
                     { title: "Sotish narxi", dataIndex: "salePrice", render: (text) => text.toLocaleString() },
@@ -211,12 +348,21 @@ const Products = () => {
             </Modal>
             <div className="products-header" style={{ display: "flex", gap: "12px", padding: "12px" }}>
                 <Space>
-                    <Input ref={inputRef} onKeyDown={(e) => {
+                    <Input value={value} onChange={(e) => setValue(e.target.value)} suffix={
+                        (
+                            <MdOutlineClear onClick={handleClear} style={{ color: 'rgba(0,0,0,.45)', cursor: 'pointer' }} />
+                        )
+                    } ref={inputRef} onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                             handleSearch(e.target.value);
                         }
                     }} autoFocus style={{ width: "500px", height: "50px", fontSize: "20px" }} placeholder={!searchType ? "Barkod bilan qidirish" : "Nomi bilan qidirish"} onSubmit={(value) => handleSearch(value)} />
                     <Switch title="Qidiruv turini almashtirish" value={searchType} checkedChildren="Nomi" unCheckedChildren="Barkod" onChange={(value) => setSearchType(value)} />
+                    <Select onChange={(value) => setFilters({ ...filters, sort: value })} defaultValue="Saralash" style={{ width: 200 }}>
+                        <Select.Option value="">Saralashsiz</Select.Option>
+                        <Select.Option value="quantity_inc">Miqdor: birinchi kam</Select.Option>
+                        <Select.Option value="quantity_dec">Miqdor: birinchi ko'p</Select.Option>
+                    </Select>
                 </Space>
             </div>
             <Tabs activeKey={currentTab}
@@ -226,7 +372,8 @@ const Products = () => {
                 }}
             >
                 <Tabs.TabPane tab="Mahsulotlar" key="1">
-                    <Table style={{ overflowX: "auto" }} size="small" dataSource={data} loading={barcodeIsLoading || nameIsLoading} columns={columns} />
+                    <Table pagination={pagination}
+                        onChange={handleTableChange} style={{ overflowX: "auto" }} size="small" dataSource={data} loading={barcodeIsLoading || nameIsLoading} columns={columns} />
                 </Tabs.TabPane>
                 <Tabs.TabPane tab="Mahsulot qo'shish" key="2">
                     <Form
