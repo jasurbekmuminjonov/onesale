@@ -1,5 +1,5 @@
 const express = require("express");
-const { createStore, loginUser, createEmployee, createCustomer, createSupplier, getStore, getEmployees, getEmployee, getCustomers, getSuppliers } = require("./controllers/UserController");
+const { createStore, loginUser, createEmployee, createCustomer, createSupplier, getStore, getEmployees, getEmployee, getCustomers, getSuppliers, getDebtCustomers } = require("./controllers/UserController");
 const { authMiddleware } = require("./middlewares/authMiddleware");
 const { createProduct, getProductByBarcode, updateProduct, getProductsByName, updateProductStock, getPaginatedProducts } = require("./controllers/ProductController");
 const { createImport, getImports, completeImport, payImportDebt, cancelImport } = require("./controllers/ImportController");
@@ -19,6 +19,7 @@ rt.get("/store", authMiddleware, getStore)
 rt.get("/employees", authMiddleware, getEmployees)
 rt.get("/employee", authMiddleware, getEmployee)
 rt.get("/customers", authMiddleware, getCustomers)
+rt.get("/customers/debt", authMiddleware, getDebtCustomers)
 rt.get("/suppliers", authMiddleware, getSuppliers)
 
 //product.service.js

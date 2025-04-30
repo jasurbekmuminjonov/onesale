@@ -68,6 +68,13 @@ export const userApi = api.injectEndpoints({
       }),
       providesTags: ["User"],
     }),
+    getDebtCustomers: builder.query({
+      query: () => ({
+        url: "/customers/debt",
+        method: "GET",
+      }),
+      providesTags: ["User"],
+    }),
 
     getSuppliers: builder.query({
       query: () => ({
@@ -89,4 +96,5 @@ export const {
   useGetEmployeeQuery,
   useGetCustomersQuery,
   useGetSuppliersQuery,
+  useGetDebtCustomersQuery,
 } = userApi;

@@ -9,6 +9,9 @@ import Products from "../../pages/Products";
 import Import from "../../pages/Import";
 import ImportHistory from "../../pages/ImportHistory";
 import Sale from "../../pages/Sale";
+import SaleHistory from "../../pages/SaleHistory";
+import Debtors from "../../pages/Debtors";
+import ReturnProduct from "../../pages/ReturnProduct";
 
 
 function Layout() {
@@ -29,8 +32,9 @@ function Layout() {
             <Route path="/import" element={<Import />} />
             <Route path="/sale" element={<Sale />} />
             <Route path="/import-history" element={<ImportHistory />} />
-            <Route path="/sale-history" element={<p>Endi bitadi</p>} />
-            <Route path="/debt" element={<p>Endi bitadi</p>} />
+            <Route path="/sale-history" element={<SaleHistory />} />
+            <Route path="/return" element={<ReturnProduct />} />
+            <Route path="/debt" element={<Debtors />} />
           </Routes>
         </main>
       </div>

@@ -52,7 +52,8 @@ const Sidebar = () => {
     >
       <div style={{ padding: "16px", textAlign: "center" }}>
         {!collapsed && (
-          <Title level={5} style={{ color: "white", margin: 0 }}>
+          <Title level={5} style={{ color: "white", margin: 0, display: "flex", alignItems: "center", gap: "12px" }}>
+            <img src="/favicon.ico" style={{ width: "40px" }} />
             OneSale
           </Title>
         )}

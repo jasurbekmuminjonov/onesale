@@ -1,45 +1,83 @@
-import React from 'react';
-import { useGetUsersQuery } from '../context/service/user.service';
-import { useGetSalesQuery } from '../context/service/sale.service';
-import { Button, Popover, Table } from 'antd';
-
+import React, { useState } from 'react';
+import { Table, Button, Modal } from 'antd';
+import { useGetDebtCustomersQuery } from '../context/service/user.service';
+import { FaList, FaLink } from 'react-icons/fa6';
 import moment from 'moment';
-import { FaLink, FaList } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
+
 const Debtors = () => {
-    const { data: users = [], isLoading: userLoading } = useGetUsersQuery();
-    const { data: sales = [], isLoading: salesLoading } = useGetSalesQuery();
+    const { data: debtors = [], isLoading } = useGetDebtCustomersQuery();
+    const [selectedSales, setSelectedSales] = useState([]);
+    const [isModalOpen, setIsModalOpen] = useState(false);
     const navigate = useNavigate();
-    const clients = users.filter(user => user.role === 'client');
-    const debts = sales.filter(sale => sale.isDebt === true);
-    const debtors = clients.filter(client => debts.some(debt => debt.clientId._id === client._id));
+
     const columns = [
-        { title: "Qarzdor", dataIndex: "fullname" },
-        { title: "Telefon", dataIndex: "phone" },
-        { title: "Umumiy qarz", render: (_, record) => debts.filter(debt => debt.clientId._id === record._id).reduce((acc, curr) => acc + curr.totalAmountToPaid - curr.totalAmountPaid, 0).toLocaleString() },
+        { title: "Mijoz", dataIndex: "customerName" },
         {
-            title: "Qarz sotuvlar", render: (_, record) => (
-                <Popover title="Sotuvlar" trigger='click' placement='bottom' content={
-                    <Table dataSource={debts.filter(debt => debt.clientId._id === record._id)} columns={[
-                        { title: "Sana", dataIndex: "createdAt", render: (text) => moment(text).format('DD.MM.YYYY') },
-                        { title: "Umumiy to'lov", dataIndex: "totalAmountToPaid", render: (text) => text.toLocaleString() },
-                        { title: "To'langan", dataIndex: "totalAmountPaid", render: (text) => text.toLocaleString() },
-                        { title: "Qarz", render: (_, record) => (record.totalAmountToPaid - record.totalAmountPaid).toLocaleString() },
-                        {
-                            title: "Amallar", dataIndex: "_id", render: (text) => (
-                                <Button type='primary' onClick={() => navigate(`/sale-history?saleId=${text}`)}><FaLink /></Button>
-                            )
-                        }
-                    ]} />
-                }>
-                    <Button><FaList /></Button>
-                </Popover>
+            title: "Umumiy qarz",
+            dataIndex: "totalDebtAmount",
+            render: (amount) => amount.toLocaleString()
+        },
+        {
+            title: "Amal",
+            render: (_, record) => (
+                <Button
+                    icon={<FaList />}
+                    onClick={() => {
+                        setSelectedSales(record.debtSales);
+                        setIsModalOpen(true);
+                    }}
+                />
             )
         }
-    ]
+    ];
+
+    const modalColumns = [
+        {
+            title: "Sotuv sanasi",
+            dataIndex: "saleDate",
+            render: (date) => moment(date).format("DD.MM.YYYY HH:mm")
+        },
+        { title: "Qarz miqdori", dataIndex: "debtAmount", render: (amount) => amount.toLocaleString() },
+        {
+            title: "Amal",
+            render: (_, record) => (
+                <Button
+                    icon={<FaLink />}
+                    onClick={() => navigate(`/sale-history?saleId=${record.saleId}`)}
+                />
+            )
+        }
+    ];
+
     return (
-        <div className='debtors'>
-            <Table columns={columns} dataSource={debtors} loading={userLoading || salesLoading} />
+        <div className="debtors">
+            <Table
+                dataSource={debtors}
+                columns={columns}
+                loading={isLoading}
+                rowKey="customerId"
+                size="small"
+                pagination={{ pageSize: 10 }}
+            />
+
+            <Modal
+                open={isModalOpen}
+                title="Qarzdorlik savdolari"
+                footer={null}
+                onCancel={() => {
+                    setIsModalOpen(false);
+                    setSelectedSales([]);
+                }}
+            >
+                <Table
+                    dataSource={selectedSales}
+                    columns={modalColumns}
+                    rowKey="saleId"
+                    pagination={false}
+                    size="small"
+                />
+            </Modal>
         </div>
     );
 };

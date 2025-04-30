@@ -2,6 +2,7 @@ const Store = require("../models/StoreModel")
 const Employee = require("../models/EmployeeModel")
 const Customer = require("../models/CustomerModel")
 const Supplier = require("../models/SupplierModel")
+const Sale = require("../models/SaleModel")
 const Import = require("../models/ImportModel")
 const bcrypt = require("bcryptjs")
 const jwt = require("jsonwebtoken")
@@ -180,3 +181,50 @@ exports.getEmployee = async (req, res) => {
         return res.status(500).json({ message: "Serverda xatolik" });
     }
 }
+
+exports.getDebtCustomers = async (req, res) => {
+    try {
+        const storeId = req.user.storeId;
+
+        const debtSales = await Sale.find({
+            isDebt: true,
+            storeId: storeId,
+            customerId: { $ne: null }
+        })
+            .populate('customerId', 'customerName storeId')
+            .lean();
+
+        const customerMap = {};
+
+        for (const sale of debtSales) {
+            const customer = sale.customerId;
+
+            if (!customer || customer.storeId.toString() !== storeId.toString()) continue;
+
+            const customerId = customer._id.toString();
+
+            if (!customerMap[customerId]) {
+                customerMap[customerId] = {
+                    customerName: customer.customerName,
+                    customerId: customerId,
+                    totalDebtAmount: 0,
+                    debtSales: []
+                };
+            }
+
+            customerMap[customerId].totalDebtAmount += sale.totalAmount - sale.paidAmount;
+            customerMap[customerId].debtSales.push({
+                saleId: sale._id.toString(),
+                saleDate: sale.date,
+                debtAmount: sale.totalAmount - sale.paidAmount,
+            });
+        }
+
+        const result = Object.values(customerMap);
+
+        res.status(200).json(result);
+    } catch (err) {
+        console.log(err.message);
+        return res.status(500).json({ message: "Serverda xatolik" });
+    }
+};

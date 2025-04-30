@@ -276,7 +276,6 @@ const Products = () => {
                     return totalB - totalA;
                 });
             }
-
             setData(sortedData);
         };
 
@@ -330,6 +329,7 @@ const Products = () => {
                                             setIsOpen(false);
                                             setSelectedProduct(null);
                                             setNewQuantities({ ...newQuantities, [record.date]: null });
+                                            await refreshTable();
                                         } catch (error) {
                                             console.log(error);
                                             message.error("Miqdorni yangilashda xatolik: " + error.data.message);

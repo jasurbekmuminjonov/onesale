@@ -19,8 +19,8 @@ const Customers = () => {
     const columns = [
         { title: "To'liq ismi", dataIndex: "customerName" },
         { title: "Telefon raqami", dataIndex: "customerPhone" },
-        { title: "Umumiy importlar", dataIndex: "totalPurchaseAmount", render: (text) => text?.toLocaleString() },
-        { title: "Umumiy qarzlar", dataIndex: "totalDebtAmount", render: (text) => text?.toLocaleString() },
+        // { title: "Umumiy importlar", dataIndex: "totalPurchaseAmount", render: (text) => text?.toLocaleString() },
+        // { title: "Umumiy qarzlar", dataIndex: "totalDebtAmount", render: (text) => text?.toLocaleString() },
         // {
         //     title: "Amallar",
         //     render: (text, record) => (
