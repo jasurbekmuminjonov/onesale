@@ -1,14 +1,19 @@
 import { TbPackageImport, TbUserUp, TbUserDown } from "react-icons/tb";
-import { FaClipboardList, FaCoins } from "react-icons/fa";
+import { FaChartArea, FaClipboardList, FaCoins } from "react-icons/fa";
 import { TiShoppingCart } from "react-icons/ti";
 import { AiFillProduct } from "react-icons/ai";
-import { RiAnticlockwiseFill } from "react-icons/ri";
+import { RiAdminFill, RiAnticlockwiseFill } from "react-icons/ri";
 
 export const adminItems = [
     {
         icon: <AiFillProduct size={20} />,
         path: '/',
         label: "Tovar"
+    },
+    {
+        icon: <FaChartArea  size={20} />,
+        path: '/statistics',
+        label: "Statistika"
     },
     {
         icon: <TbPackageImport size={20} />,
@@ -49,5 +54,10 @@ export const adminItems = [
         icon: <TbUserUp size={20} />,
         path: '/customers',
         label: "Xaridorlar"
+    },
+    {
+        icon: <RiAdminFill  size={20} />,
+        path: '/employee',
+        label: "Xodimlar"
     },
 ];

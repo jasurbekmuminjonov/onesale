@@ -1,127 +1,105 @@
 import React, { useState } from 'react';
-import { useCreateUserMutation, useGetUsersQuery } from '../context/service/user.service';
-import {
-    Tabs,
-    Table,
-    Form,
-    Input,
-    Button,
-    message,
-    Row,
-    Col,
-    Select,
-    Space,
-    Popconfirm,
-} from "antd";
-const Distributors = () => {
-    const { data: users, isLoading } = useGetUsersQuery()
-    const [createUser] = useCreateUserMutation()
+import { useCreateEmployeeMutation, useGetEmployeesQuery } from '../context/service/user.service';
+import { Table, Tabs, Form, Input, Select, Button, message, Spin } from 'antd';
+
+const { TabPane } = Tabs;
+const { Option } = Select;
+
+const Employees = () => {
+    const { data = [], isLoading, refetch } = useGetEmployeesQuery();
+    const [createEmployee, { isLoading: creating }] = useCreateEmployeeMutation();
     const [form] = Form.useForm();
-    const [currentTab, setCurrentTab] = useState('1')
-    const [selectedItem, setSelectedItem] = useState("");
+    const [currentTab, setCurrentTab] = useState("1");
 
-    const distributors = users?.filter(user => user.role === 'distributor') || [];
-    const columns = [
-        { title: "To'liq ismi", dataIndex: "fullname" },
-        { title: "Telefon raqami", dataIndex: "phone" }
-    ]
-    const onFinish = async (values) => {
+    const handleAddEmployee = async (values) => {
         try {
-            let data = {
-                fullname: values.fullname,
-                phone: values.phone,
-                password: values.password,
-                role: "distributor"
-            };
-            let res;
-            // if (selectedItem) {
-            //     res = await updatePiece({ id: selectedItem, updatedData: data });
-            // } else {
-            // }
-            res = await createUser(data).unwrap();
-
-            message.success("Agent muvaffaqiyatli qo'shildi");
-            // setSelectedItem("");
+            await createEmployee(values).unwrap();
+            message.success("Xodim muvaffaqiyatli qo'shildi!");
             form.resetFields();
             setCurrentTab("1");
-        } catch (error) {
-            message.error("Agent qo'shishda xatolik: " + error.data.message);
+            refetch();
+        } catch (err) {
+            message.error("Xatolik: " + (err?.data?.message || "Server xatosi"));
         }
     };
+
+    const columns = [
+        { title: "Ismi", dataIndex: "name", key: "name" },
+        { title: "Telefon", dataIndex: "phone", key: "phone" },
+        { title: "Roli", dataIndex: "role", key: "role", render: (text) => text === "cashier" ? "Kassir" : "Menejer" },
+    ];
+
     return (
-        <div className='distributors'>
-            <Tabs activeKey={currentTab}
-                onChange={(key) => {
-                    setCurrentTab(key);
-                    form.resetFields();
-                }}
-            >
-                <Tabs.TabPane tab="Agentlar" key="1">
-                    <Table style={{ overflowX: "auto" }} size="small" dataSource={distributors} loading={isLoading} columns={columns} />
-                </Tabs.TabPane>
-                <Tabs.TabPane tab="Agent qo'shish" key="2">
+        <div className="employees">
+            <Tabs activeKey={currentTab} onChange={(value) => setCurrentTab(value)}>
+                <TabPane tab="Xodimlar ro'yxati" key="1">
+                    {isLoading ? (
+                        <Spin />
+                    ) : (
+                        <Table
+                            dataSource={data || []}
+                            columns={columns}
+                            rowKey="_id"
+                            pagination={{ pageSize: 10 }}
+                        />
+                    )}
+                </TabPane>
+
+                <TabPane tab="Yangi xodim qo‘shish" key="2">
                     <Form
-                        autoComplete='off'
-                        layout="vertical"
-                        onFinish={onFinish}
                         form={form}
+                        layout="vertical"
+                        onFinish={handleAddEmployee}
+                        style={{ maxWidth: "400px", marginTop: "16px" }}
                     >
-                        <Row gutter={16}>
-                            <Col span={12}>
-                                <Form.Item
-                                    label="To'liq ism"
-                                    name={"fullname"}
-                                    rules={[
-                                        { required: true, message: "To'liq ismni kiritish shart" }
-                                    ]}
-                                >
-                                    <Input placeholder='Ali Valiyev' />
-                                </Form.Item>
-                            </Col>
-                            <Col span={12}>
-                                <Form.Item
-                                    label="Parol"
-                                    name={"password"}
-                                    rules={[
-                                        { required: true, message: "Parolni kiritish shart" },
-                                        { minLength: 4, message: "Parol kamida 6 ta belgidan iborat bo'lishi kerak" }
-                                    ]}
-                                >
-                                    <Input type='password' placeholder='****' />
-                                </Form.Item>
-                            </Col>
-                        </Row>
-                        <Row gutter={16}>
-                            <Col span={24}>
-                                <Form.Item
-                                    label="Telefon"
-                                    name={"phone"}
-                                    rules={[
-                                        { required: true, message: "Telefon kiritish shart" },
-                                        {
-                                            pattern: /^\+998[0-9]{9}$/,
-                                            message:
-                                                "Telefon raqami +998 bilan boshlanib, 9 ta raqam bo'lishi kerak",
-                                        },
-                                    ]}
-                                >
-                                    <Input placeholder="+998901234567" />
-                                </Form.Item>
-                            </Col>
-                        </Row>
-                        <Row gutter={16}>
-                            <Col span={24}>
-                                <Form.Item>
-                                    <Button type='primary' htmlType='submit'>Saqlash</Button>
-                                </Form.Item>
-                            </Col>
-                        </Row>
+                        <Form.Item
+                            label="Ismi"
+                            name="name"
+                            rules={[{ required: true, message: "Iltimos, ismni kiriting!" }]}
+                        >
+                            <Input placeholder="Ism" />
+                        </Form.Item>
+
+                        <Form.Item
+                            label="Telefon"
+                            name="phone"
+                            rules={[
+                                { required: true, message: "Telefon raqam majburiy" },
+                                { pattern: /^\d{9}$/, message: "Kerakli format: 901234567" }
+                            ]}
+                        >
+                            <Input type='number' />
+                        </Form.Item>
+
+                        <Form.Item
+                            label="Parol"
+                            name="password"
+                            rules={[{ required: true, message: "Parol majburiy" }]}
+                        >
+                            <Input.Password placeholder="Parol" />
+                        </Form.Item>
+
+                        <Form.Item
+                            label="Roli"
+                            name="role"
+                            rules={[{ required: true, message: "Rol tanlang" }]}
+                        >
+                            <Select placeholder="Rolni tanlang">
+                                <Option value="cashier">Kassir</Option>
+                                <Option value="manager">Menejer</Option>
+                            </Select>
+                        </Form.Item>
+
+                        <Form.Item>
+                            <Button type="primary" htmlType="submit" loading={creating}>
+                                Qo‘shish
+                            </Button>
+                        </Form.Item>
                     </Form>
-                </Tabs.TabPane>
+                </TabPane>
             </Tabs>
         </div>
     );
 };
 
-
-export default Distributors;
+export default Employees;

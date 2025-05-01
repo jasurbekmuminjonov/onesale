@@ -12,6 +12,8 @@ import Sale from "../../pages/Sale";
 import SaleHistory from "../../pages/SaleHistory";
 import Debtors from "../../pages/Debtors";
 import ReturnProduct from "../../pages/ReturnProduct";
+import Employees from "../../pages/Employees";
+import Statistics from "../../pages/Statistics";
 
 
 function Layout() {
@@ -26,8 +28,9 @@ function Layout() {
         <Header />
         <main className="main-content">
           <Routes>
-            <Route path="/" element={<Products />} />
+            <Route path="/" element={role === "cashier" ? <Sale /> : <Products />} />
             <Route path="/suppliers" element={<Suppliers />} />
+            <Route path="/statistics" element={<Statistics />} />
             <Route path="/customers" element={<Customers />} />
             <Route path="/import" element={<Import />} />
             <Route path="/sale" element={<Sale />} />
@@ -35,6 +38,7 @@ function Layout() {
             <Route path="/sale-history" element={<SaleHistory />} />
             <Route path="/return" element={<ReturnProduct />} />
             <Route path="/debt" element={<Debtors />} />
+            <Route path="/employee" element={<Employees />} />
           </Routes>
         </main>
       </div>

@@ -1,6 +1,7 @@
 const Sale = require('../models/SaleModel');
 const Product = require('../models/ProductModel');
 const ReturnedProduct = require('../models/ReturnedProductModel');
+const moment = require("moment");
 
 exports.createSale = async (req, res) => {
     try {
@@ -147,6 +148,34 @@ exports.getReturns = async (req, res) => {
         return res.status(500).json({ message: "Serverda xatolik" });
     }
 }
+
+
+exports.getSalesByDateRange = async (req, res) => {
+    try {
+        const { storeId } = req.user;
+        const { start, end } = req.query;
+
+        if (!start || !end) {
+            return res.status(400).json({ message: "start va end query parametrlar kerak" });
+        }
+
+        const startDate = moment(start, "DD.MM.YYYY").startOf('day').toDate();
+        const endDate = moment(end, "DD.MM.YYYY").endOf('day').toDate();
+
+        const sales = await Sale.find({
+            storeId,
+            date: {
+                $gte: startDate,
+                $lte: endDate
+            }
+        }).populate("products.productId").lean();
+        res.status(200).json(sales);
+
+    } catch (error) {
+        console.error(error.message);
+        res.status(500).json({ message: "Serverda xatolik" });
+    }
+};
 
 exports.getSales = async (req, res) => {
     try {

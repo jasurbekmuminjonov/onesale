@@ -5,6 +5,7 @@ import { useLazyGetProductByBarcodeQuery, useLazyGetProductByNameQuery } from '.
 import { useCreateCustomerMutation, useGetCustomersQuery } from '../context/service/user.service';
 import moment from 'moment';
 import { useCreateSaleMutation } from '../context/service/sale.service';
+import emptyCart from '../assets/cart.png'
 const Sale = () => {
     const [getProductByBarcode, { data: barcodeData, isLoading: barcodeIsLoading, error: barcodeError }] = useLazyGetProductByBarcodeQuery()
     const [getProductByName, { data: nameData, isLoading: nameIsLoading, error: nameError }] = useLazyGetProductByNameQuery()
@@ -372,7 +373,6 @@ const Sale = () => {
                     </Space>
                 </Form>
             </Modal>
-
             <Modal
                 open={stockSelectModal}
                 width={700}
@@ -445,7 +445,24 @@ const Sale = () => {
                 <Table size='small' style={{ overflowX: "auto" }} columns={productsColumns} dataSource={data} loading={barcodeIsLoading || nameIsLoading} />
             </div>
             <div style={{ width: "50%", minHeight: "100%", padding: "5px 5px", display: "flex", flexDirection: "column", gap: "5px" }}>
-                <Table pagination={false} size='small' style={{ overflowX: "auto", height: "80%" }} columns={basketColumns} dataSource={basket} />
+                <Table locale={{
+                    emptyText:
+                        (
+                            <div style={{
+                                textAlign: "center",
+                                display: 'flex',
+                                alignItems: "center",
+                                flexDirection: "column",
+                            }}>
+                                <img
+                                    src={emptyCart}
+                                    alt="Tanlangan tovar yo'q"
+                                    style={{ width: 150, marginBottom: 10 }}
+                                />
+                                <p>Tanlangan tovar yo'q</p>
+                            </div>
+                        )
+                }} pagination={false} size='small' style={{ overflowX: "auto", height: "80%" }} columns={basketColumns} dataSource={basket} />
                 <p>Jami to'lov: {basket.reduce((acc, item) => acc + item.quantity * item.price, 0).toLocaleString()}</p>
                 <Form onFinish={handleSubmit} autoComplete='off' style={{ height: "35%", padding: "5px 0", borderTop: "1px solid #ccc" }} form={form} layout='vertical'>
                     <Space direction='vertical' style={{ width: "100%" }}>

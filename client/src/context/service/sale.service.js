@@ -18,6 +18,13 @@ export const saleApi = api.injectEndpoints({
             }),
             providesTags: ["Sale"],
         }),
+        getSalesByDate: builder.query({
+            query: ({ start, end }) => ({
+                url: `/sales/date?start=${start}&end=${end}`,
+                method: "GET",
+            }),
+            providesTags: ["Sale"],
+        }),
 
         payDebt: builder.mutation({
             query: ({ id, body }) => ({
@@ -34,4 +41,5 @@ export const {
     useCreateSaleMutation,
     useGetSalesQuery,
     usePayDebtMutation,
+    useLazyGetSalesByDateQuery
 } = saleApi;
