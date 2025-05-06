@@ -1,16 +1,32 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Button, Col, Input, message, Row, Space, Table, Form, Select, Modal, Switch } from 'antd'
-import { FaMinus, FaPlus } from 'react-icons/fa';
+import { Button, Col, Input, message, Row, Space, Table, Form, Select, Modal, Switch, Popconfirm } from 'antd'
+import { FaCashRegister, FaMinus, FaPlus } from 'react-icons/fa';
 import { useLazyGetProductByBarcodeQuery, useLazyGetProductByNameQuery } from '../context/service/product.service';
 import { useCreateCustomerMutation, useGetCustomersQuery } from '../context/service/user.service';
 import moment from 'moment';
-import { useCreateSaleMutation } from '../context/service/sale.service';
+import { useCreateDailySaleMutation, useCreateSaleMutation, useEndDailySaleMutation, useGetDailySaleQuery } from '../context/service/sale.service';
 import emptyCart from '../assets/cart.png'
+import { PiCashRegisterBold } from "react-icons/pi";
+
 const Sale = () => {
     const [getProductByBarcode, { data: barcodeData, isLoading: barcodeIsLoading, error: barcodeError }] = useLazyGetProductByBarcodeQuery()
     const [getProductByName, { data: nameData, isLoading: nameIsLoading, error: nameError }] = useLazyGetProductByNameQuery()
     const [data, setData] = useState([])
     const inputRef = useRef()
+
+    const { data: dailySale = {} } = useGetDailySaleQuery()
+    const [createDailySale] = useCreateDailySaleMutation()
+    const [endDailySale] = useEndDailySaleMutation()
+    const [isDaily, setIsDaily] = useState(false)
+
+    useEffect(() => {
+        if (dailySale) {
+            setIsDaily(true)
+        } else {
+            setIsDaily(false)
+        }
+    }, [dailySale])
+
     const [createCustomerModal, setCreateCustomerModal] = useState(false)
     const [createCustomer] = useCreateCustomerMutation()
     const [createSale] = useCreateSaleMutation()
@@ -440,6 +456,36 @@ const Sale = () => {
                             }
                         }} autoFocus style={{ width: "500px", height: "50px", fontSize: "20px" }} onSubmit={(e) => handleSearch(e)} placeholder={!searchType ? "Barkod bilan qidirish" : "Nomi bilan qidirish"} />
                         <Switch title="Qidiruv turini almashtirish" value={searchType} checkedChildren="Nomi" unCheckedChildren="Barkod" onChange={(value) => setSearchType(value)} />
+                        <Popconfirm
+                            title={!isDaily ? "Chindan ham kassani ochmoqchimisiz?" : "Chindan ham kassani yopmoqchimisiz?"}
+                            onConfirm={async () => {
+                                try {
+                                    if (!isDaily) {
+                                        await createDailySale();
+                                    } else {
+                                        await endDailySale();
+                                    }
+                                } catch (error) {
+                                    console.error("Error handling daily sale:", error);
+                                }
+                            }}
+                            okText="Ha"
+                            cancelText="Yo'q"
+                        >
+                            <Button disabled={isDaily && dailySale?.status === 'inactive'}>
+                                <div
+                                    className="dot"
+                                    style={{
+                                        borderRadius: "10px",
+                                        width: "10px",
+                                        height: "10px",
+                                        background: !isDaily ? "red" : "green",
+                                        marginRight: "5px",
+                                    }}
+                                ></div>
+                                <PiCashRegisterBold />
+                            </Button>
+                        </Popconfirm>
                     </Space>
                 </div>
                 <Table size='small' style={{ overflowX: "auto" }} columns={productsColumns} dataSource={data} loading={barcodeIsLoading || nameIsLoading} />
@@ -510,7 +556,7 @@ const Sale = () => {
                     </Space>
                 </Form>
             </div>
-        </div>
+        </div >
     );
 };
 

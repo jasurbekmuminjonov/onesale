@@ -218,7 +218,7 @@ exports.getDebtCustomers = async (req, res) => {
                 saleDate: sale.date,
                 debtAmount: sale.totalAmount - sale.paidAmount,
             });
-        }
+        }   
 
         const result = Object.values(customerMap);
 

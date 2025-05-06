@@ -3,7 +3,7 @@ const { createStore, loginUser, createEmployee, createCustomer, createSupplier, 
 const { authMiddleware } = require("./middlewares/authMiddleware");
 const { createProduct, getProductByBarcode, updateProduct, getProductsByName, updateProductStock, getPaginatedProducts } = require("./controllers/ProductController");
 const { createImport, getImports, completeImport, payImportDebt, cancelImport } = require("./controllers/ImportController");
-const { createSale, getSales, payDebt, createReturn, getReturns, getSalesByDateRange } = require("./controllers/SaleController");
+const { createSale, getSales, payDebt, createReturn, getReturns, getSalesByDateRange, getDailySale, createDailySale, endDailySale, getDailySales } = require("./controllers/SaleController");
 const { createExpense, getExpenses } = require("./controllers/ExpenseController");
 const rt = express.Router();
 
@@ -42,6 +42,10 @@ rt.post("/sale/create", authMiddleware, createSale)
 rt.get("/sales", authMiddleware, getSales)
 rt.put("/sale/payment/:id", authMiddleware, payDebt)
 rt.get('/sales/date', authMiddleware, getSalesByDateRange)
+rt.get('/sale/daily', authMiddleware, getDailySale)
+rt.get('/sale/daily/all', authMiddleware, getDailySales)
+rt.post('/sale/daily/create', authMiddleware, createDailySale)
+rt.put('/sale/daily/end', authMiddleware, endDailySale)
 
 //return.service.js
 rt.post("/return/create", authMiddleware, createReturn)

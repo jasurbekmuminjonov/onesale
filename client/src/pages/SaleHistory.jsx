@@ -1,6 +1,6 @@
-import React, { useMemo, useState } from 'react';
-import { Table, Button, Modal, Popconfirm, message, Space, Form, Input, Select, Popover } from 'antd';
-import { useGetSalesQuery, usePayDebtMutation } from '../context/service/sale.service';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Table, Button, Modal, Popconfirm, message, Space, Form, Input, Select, Popover, Statistic } from 'antd';
+import { useGetDailySalesQuery, useGetSalesQuery, usePayDebtMutation } from '../context/service/sale.service';
 import { FaDollarSign, FaFilter, FaList } from 'react-icons/fa6';
 import { TbClockDollar } from 'react-icons/tb';
 import moment from 'moment';
@@ -13,11 +13,16 @@ const SaleHistory = () => {
     const [payId, setPayId] = useState(null);
     const [paymentForm] = Form.useForm();
     const [selectedProducts, setSelectedProducts] = useState([]);
+    const { data: dailySales = [] } = useGetDailySalesQuery()
     const [productsModal, setProductsModal] = useState(false);
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const [paySaleDebt] = usePayDebtMutation();
     const saleId = searchParams.get("saleId");
+    const [totalPaid, setTotalPaid] = useState(0)
+    useEffect(() => {
+        setTotalPaid(dailySales.reduce((acc, item) => acc + item.sales.reduce((acc, item) => acc + item.paidAmount, 0), 0))
+    }, [dailySales])
     const filteredSales = useMemo(() => {
         if (saleId) {
             return sales.filter((sale) => sale._id === saleId);
@@ -127,6 +132,7 @@ const SaleHistory = () => {
                     ]}
                 />
             </Modal>
+            <Statistic valueStyle={{ color: '#3f8600' }} title="Bugungi sotuv" value={totalPaid.toLocaleString()} suffix={"UZS"} prefix={<FaDollarSign />} />
 
             <Table
                 size='small'

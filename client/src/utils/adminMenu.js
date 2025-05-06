@@ -25,11 +25,11 @@ export const adminItems = [
         path: '/import-history',
         label: "Import tarixi"
     },
-    {
-        icon: <TiShoppingCart size={20} />,
-        path: '/sale',
-        label: "Sotuv"
-    },
+    // {
+    //     icon: <TiShoppingCart size={20} />,
+    //     path: '/sale',
+    //     label: "Sotuv"
+    // },
     {
         icon: <FaClipboardList  size={20} />,
         path: '/sale-history',

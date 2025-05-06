@@ -10,10 +10,40 @@ export const saleApi = api.injectEndpoints({
             }),
             invalidatesTags: ["Sale"],
         }),
+        createDailySale: builder.mutation({
+            query: () => ({
+                url: "/sale/daily/create",
+                method: "POST",
+                body: {},
+            }),
+            invalidatesTags: ["Sale"],
+        }),
+        endDailySale: builder.mutation({
+            query: () => ({
+                url: "/sale/daily/end",
+                method: "PUT",
+                body: {},
+            }),
+            invalidatesTags: ["Sale"],
+        }),
 
         getSales: builder.query({
             query: () => ({
                 url: "/sales",
+                method: "GET",
+            }),
+            providesTags: ["Sale"],
+        }),
+        getDailySale: builder.query({
+            query: () => ({
+                url: "/sale/daily",
+                method: "GET",
+            }),
+            providesTags: ["Sale"],
+        }),
+        getDailySales: builder.query({
+            query: () => ({
+                url: "/sale/daily/all",
                 method: "GET",
             }),
             providesTags: ["Sale"],
@@ -41,5 +71,9 @@ export const {
     useCreateSaleMutation,
     useGetSalesQuery,
     usePayDebtMutation,
-    useLazyGetSalesByDateQuery
+    useLazyGetSalesByDateQuery,
+    useCreateDailySaleMutation,
+    useEndDailySaleMutation,
+    useGetDailySaleQuery,
+    useGetDailySalesQuery
 } = saleApi;

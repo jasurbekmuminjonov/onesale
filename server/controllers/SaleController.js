@@ -1,15 +1,17 @@
 const Sale = require('../models/SaleModel');
 const Product = require('../models/ProductModel');
+const DailySale = require('../models/DailySaleModel');
 const ReturnedProduct = require('../models/ReturnedProductModel');
 const moment = require("moment");
+const momentTz = require('moment-timezone');
+
 
 exports.createSale = async (req, res) => {
     try {
         const { products, totalAmount, customerId, paymentMethod, paymentAmount } = req.body;
-        const { storeId } = req.user;
+        const { storeId, employeeId } = req.user;
         let paymentLog = [];
         const isDebt = paymentAmount < totalAmount;
-
         if (paymentAmount > 0) {
             paymentLog.push({
                 paymentMethod,
@@ -58,12 +60,84 @@ exports.createSale = async (req, res) => {
             .populate('products.productId')
             .populate('customerId');
 
+        const todaySale = await DailySale.findOne({
+            date: momentTz().tz("Asia/Tashkent").format("DD.MM.YYYY"),
+            employeeId
+        });
+
+        todaySale.sales.push(sale._id)
+        await todaySale.save()
         res.status(201).json({ message: 'Savdo muvaffaqiyatli yaratildi', sale: savedSale });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server error' });
     }
 };
+
+exports.getDailySale = async (req, res) => {
+    try {
+        const { employeeId } = req.user
+
+        const todaySale = await DailySale.findOne({
+            date: momentTz().tz("Asia/Tashkent").format("DD.MM.YYYY"),
+            employeeId
+        });
+        return res.json(todaySale)
+
+    } catch (err) {
+        console.log(err.message)
+        return res.status(500).json({ message: "Serverda xatolik" });
+    }
+}
+
+exports.getDailySales = async (req, res) => {
+    try {
+        const todaySale = await DailySale.find({
+            date: momentTz().tz("Asia/Tashkent").format("DD.MM.YYYY")
+        }).populate('sales');
+        return res.json(todaySale)
+
+    } catch (err) {
+        console.log(err.message)
+        return res.status(500).json({ message: "Serverda xatolik" });
+    }
+}
+
+exports.createDailySale = async (req, res) => {
+    try {
+        const { employeeId, storeId } = req.user
+        await DailySale.create({
+            employeeId,
+            storeId,
+            status: 'active',
+            sales: [],
+            date: momentTz().tz("Asia/Tashkent").format("DD.MM.YYYY")
+        })
+        return res.json({ message: "Kassa ochildi" })
+
+    } catch (err) {
+        console.log(err.message)
+        return res.status(500).json({ message: "Serverda xatolik" });
+    }
+}
+
+exports.endDailySale = async (req, res) => {
+    try {
+        const { employeeId, storeId } = req.user
+        await DailySale.findOneAndUpdate({
+            employeeId,
+            storeId,
+            status: 'active',
+            date: momentTz().tz("Asia/Tashkent").format("DD.MM.YYYY")
+        }, { status: 'inactive' })
+        return res.json({ message: "Kassa yopildi" })
+
+
+    } catch (err) {
+        console.log(err.message)
+        return res.status(500).json({ message: "Serverda xatolik" });
+    }
+}
 
 exports.createReturn = async (req, res) => {
     try {
