@@ -16,6 +16,10 @@ const ProductSchema = new mongoose.Schema({
         required: true,
         trim: true
     },
+    isGeneratedBarcode: {
+        type: Boolean,
+        default: false
+    },
     stock: {
         type: [
             {

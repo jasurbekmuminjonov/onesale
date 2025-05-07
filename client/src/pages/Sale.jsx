@@ -199,29 +199,27 @@ const Sale = () => {
             ),
         },
         {
-            title: "Narx turi",
+            title: "Optom sotish?",
             render: (_, record) => (
-                <Select
-                    value={record.priceType}
-                    onChange={(value) => {
-                        const newData = basket.map((item) => {
-                            if (item.key === record.key) {
-                                const newPrice =
-                                    value === 'sale' ? item.salePrice :
-                                        value === 'saleOptom' ? item.salePriceOptom :
-                                            item.price
-                                return { ...item, priceType: value, price: newPrice }
-                            }
-                            return item
-                        })
-                        setBasket(newData)
-                    }}
-                >
-                    <Select.Option value={'sale'}>Odatiy sotuv</Select.Option>
-                    <Select.Option value={'saleOptom'}>Optom sotuv</Select.Option>
-                </Select>
+              <Switch
+                checked={record.priceType === "saleOptom"}
+                onChange={(checked) => {
+                  const newData = basket.map((item) => {
+                    if (item._id === record._id && item.stockDate === record.stockDate) {
+                      return {
+                        ...item,
+                        priceType: checked ? "saleOptom" : "sale",
+                        price: checked ? item.salePriceOptom : item.salePrice
+                      };
+                    }
+                    return item;
+                  });
+                  setBasket(newData);
+                }}
+              />
             )
-        },
+          },
+          
         { title: "Jami sotish summasi", render: (_, record) => (record.price * record.quantity).toLocaleString() },
         {
             title: "O'chirish", render: (_, record) => (
@@ -304,7 +302,6 @@ const Sale = () => {
                 price: item.price
             }));
             values.products = products
-            values.paymentAmount = Number(values.paidAmount)
             values.paymentAmount = Number(values.paidAmount)
             values.totalAmount = basket.reduce((acc, item) => acc + item.quantity * item.price, 0)
             const res = await createSale(values).unwrap()
@@ -533,7 +530,7 @@ const Sale = () => {
                                 </Button>
                             </Col>
                             <Col span={8}>
-                                <Form.Item label="To'lov miqdori" name="paidAmount">
+                                <Form.Item initialValue={0} label="To'lov miqdori" name="paidAmount">
                                     <Input type='number' />
                                 </Form.Item>
                             </Col>
@@ -549,7 +546,8 @@ const Sale = () => {
                         <Row gutter={16} >
                             <Col span={12} >
                                 <Form.Item>
-                                    <Button htmlType='submit' type='primary'>Sotish</Button>
+                                    <Button title={!isDaily || dailySale?.status === 'inactive' ? "Kassa yopilgan" : ""} disabled={!isDaily || dailySale?.status === 'inactive'} htmlType='submit' type='primary'>Sotish</Button>
+                                    <p>{!isDaily || dailySale?.status === 'inactive' ? "Kassa yopilgan" : ""}</p>
                                 </Form.Item>
                             </Col>
                         </Row>

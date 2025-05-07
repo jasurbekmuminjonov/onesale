@@ -167,9 +167,13 @@ exports.createReturn = async (req, res) => {
             return res.status(400).json({ message: 'Qaytarilayotgan miqdor sotilganidan ko\'p bo\'lishi mumkin emas' });
         }
 
+        const formatDate = (date) => new Date(date).toISOString().split('T')[0];
+
         const stockItem = product.stock.find(item =>
-            new Date(item.date).getTime() === new Date(stockDate).getTime()
+            formatDate(item.date) === formatDate(stockDate)
         );
+
+
 
         if (!stockItem) {
             return res.status(400).json({ message: 'Mahsulot omborida mos sana topilmadi' });
@@ -185,9 +189,10 @@ exports.createReturn = async (req, res) => {
         sale.paidAmount = Math.min(sale.paidAmount, sale.totalAmount);
         await sale.save();
 
-        if (sale.totalAmount === 0) {
-            await sale.remove();
+        if (sale.totalAmount <= 0) {
+            await Sale.findByIdAndDelete(sale._id);
         }
+        
 
 
         const returnedProduct = new ReturnedProduct({

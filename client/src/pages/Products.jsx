@@ -18,15 +18,20 @@ import { useCreateProductMutation, useLazyGetProductByBarcodeQuery, useUpdatePro
 import { LuClipboardList } from "react-icons/lu";
 import { FaCheck } from "react-icons/fa";
 import { MdOutlineClear } from "react-icons/md";
+import { PrinterOutlined } from "@ant-design/icons";
+
 
 
 const Products = () => {
     const [form] = Form.useForm();
     const [createProduct] = useCreateProductMutation()
+    const [autoGenerateBarcode, setAutoGenerateBarcode] = useState(false);
+
     const [isOpen, setIsOpen] = useState(false)
     const [selectedProduct, setSelectedProduct] = useState(null)
     const [updateProduct] = useUpdateProductMutation()
     const [newQuantities, setNewQuantities] = useState({});
+
     const [updateProductStock] = useUpdateProductStockMutation()
     const [searchType, setSearchType] = useState(false)
     const [data, setData] = useState([])
@@ -39,6 +44,18 @@ const Products = () => {
     const [filters, setFilters] = useState({
         sort: ''
     });
+    const generateRandomBarcode = () => {
+        return Math.floor(100000 + Math.random() * 900000).toString();
+    };
+    const handleSwitchChange = (checked) => {
+        setAutoGenerateBarcode(checked);
+        if (checked) {
+            const randomBarcode = generateRandomBarcode();
+            form.setFieldsValue({ barcode: randomBarcode });
+        } else {
+            form.setFieldsValue({ barcode: "" });
+        }
+    };
     const [value, setValue] = useState('');
 
     const [pagination, setPagination] = useState({
@@ -121,12 +138,39 @@ const Products = () => {
                             salePrice: record.salePrice,
                             salePriceOptom: record.salePriceOptom,
                             unitMeasure: record.unitMeasure,
-
+                            isGeneratedBarcode: record.isGeneratedBarcode,
                         })
+                        setAutoGenerateBarcode(record.isGeneratedBarcode);
                         setCurrentTab("2")
                     }}>
                         <MdEdit />
                     </Button>
+                    {record.isGeneratedBarcode && (
+                        <Button title="Chop etish" onClick={() => {
+                            const printWindow = window.open('', 'PRINT', 'height=400,width=600');
+                            const barcodeUrl = `https://barcode.tec-it.com/barcode.ashx?data=${record.barcode}`;
+
+                            printWindow.document.write(`
+                                <html>
+                                    <head><title></title></head>
+                                    <body style="text-align:center">
+                                        <img id="barcode-img" src="${barcodeUrl}" />
+                                        <script>
+                                            const img = document.getElementById('barcode-img');
+                                            img.onload = () => {
+                                                window.print();
+                                                window.close();
+                                            };
+                                        </script>
+                                    </body>
+                                </html>
+                            `);
+                            printWindow.document.close();
+                        }}
+                        >
+                            <PrinterOutlined />
+                        </Button>
+                    )}
                 </Space>
             )
         }
@@ -205,6 +249,7 @@ const Products = () => {
                 purchasePrice: Number(values.purchasePrice),
                 salePrice: Number(values.salePrice),
                 salePriceOptom: Number(values.salePriceOptom),
+                isGeneratedBarcode: autoGenerateBarcode,
             };
             let res;
             if (selectedItem) {
@@ -373,7 +418,7 @@ const Products = () => {
             >
                 <Tabs.TabPane tab="Mahsulotlar" key="1">
                     <Table pagination={pagination}
-                        onChange={handleTableChange} style={{ overflowX: "auto" }} size="small" dataSource={data} loading={barcodeIsLoading || nameIsLoading} columns={columns} />
+                        onChange={handleTableChange} style={{ overflowX: "auto" }} size="small" dataSource={data} loading={barcodeIsLoading || nameIsLoading || pageIsLoading} columns={columns} />
                 </Tabs.TabPane>
                 <Tabs.TabPane tab="Mahsulot qo'shish" key="2">
                     <Form
@@ -389,10 +434,23 @@ const Products = () => {
                                 </Form.Item>
                             </Col>
                             <Col span={8}>
-                                <Form.Item label="Barkod" name="barcode" rules={[{ required: true, message: "Barkodni kiritish shart" }]}>
+                                <Form.Item
+                                    label={
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: "24px" }}>
+                                            <span>Barkod</span>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: "6px" }}>
+                                                <p>Tasodifiy</p>
+                                                <Switch checked={autoGenerateBarcode} onChange={handleSwitchChange} size="small" />
+                                            </div>
+                                        </div>
+                                    }
+                                    name="barcode"
+                                    rules={[{ required: true, message: "Barkodni kiritish shart" }]}
+                                >
                                     <Input placeholder="Barkod" />
                                 </Form.Item>
                             </Col>
+
                             <Col span={8}>
                                 <Form.Item label="O'lchov birlik" name="unitMeasure" rules={[{ required: true, message: "O'lchov birlikni tanlash shart" }]}>
                                     <Select defaultValue="Штука" options={[

@@ -28,7 +28,7 @@ const ReturnProduct = () => {
   const [createReturn, { isLoading: isCreating }] = useCreateReturnMutation();
 
   const handleFindSale = () => {
-    const found = salesData?.find(sale => sale._id === saleIdInput);
+    const found = salesData?.find(sale => sale?._id === saleIdInput);
     if (!found) return message.warning("Sotuv topilmadi");
     setSelectedSale(found);
   };
@@ -44,7 +44,7 @@ const ReturnProduct = () => {
       const body = {
         productId: selectedProduct?.productId?._id || selectedProduct?.productId,
         stockDate: selectedProduct.stockDate,
-        saleId: selectedSale._id,
+        saleId: selectedSale?._id,
         quantity: values.quantity,
         reason: values.reason,
         storeId: selectedSale.storeId,
@@ -139,7 +139,7 @@ const ReturnProduct = () => {
             <Table
               columns={saleColumns}
               dataSource={selectedSale.products}
-              rowKey={(record) => record.productId._id || record.productId}
+              rowKey={(record) => record.productId?._id || record.productId}
               pagination={false}
             />
           ) : null}
