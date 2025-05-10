@@ -13,6 +13,8 @@ const Sale = () => {
     const [getProductByName, { data: nameData, isLoading: nameIsLoading, error: nameError }] = useLazyGetProductByNameQuery()
     const [data, setData] = useState([])
     const inputRef = useRef()
+    const [useOptomPrice, setUseOptomPrice] = useState(false);
+
 
     const { data: dailySale = {} } = useGetDailySaleQuery()
     const [createDailySale] = useCreateDailySaleMutation()
@@ -80,8 +82,9 @@ const Sale = () => {
                                     ...product,
                                     quantity: 1,
                                     stockDate: stock.date,
-                                    price: stock.salePrice,
-                                    priceType: 'sale'
+                                    price: useOptomPrice ? stock.salePriceOptom : stock.salePrice,
+                                    priceType: useOptomPrice ? 'saleOptom' : 'sale'
+
                                 }
                             ])
                         }
@@ -141,8 +144,9 @@ const Sale = () => {
                                         ...record,
                                         quantity: 1,
                                         stockDate: stock.date,
-                                        price: stock.salePrice,
-                                        priceType: 'sale'
+                                        price: useOptomPrice ? stock.salePriceOptom : stock.salePrice,
+                                        priceType: useOptomPrice ? 'saleOptom' : 'sale'
+
                                     }
                                 ])
                             }
@@ -201,25 +205,25 @@ const Sale = () => {
         {
             title: "Optom sotish?",
             render: (_, record) => (
-              <Switch
-                checked={record.priceType === "saleOptom"}
-                onChange={(checked) => {
-                  const newData = basket.map((item) => {
-                    if (item._id === record._id && item.stockDate === record.stockDate) {
-                      return {
-                        ...item,
-                        priceType: checked ? "saleOptom" : "sale",
-                        price: checked ? item.salePriceOptom : item.salePrice
-                      };
-                    }
-                    return item;
-                  });
-                  setBasket(newData);
-                }}
-              />
+                <Switch
+                    checked={record.priceType === "saleOptom"}
+                    onChange={(checked) => {
+                        const newData = basket.map((item) => {
+                            if (item._id === record._id && item.stockDate === record.stockDate) {
+                                return {
+                                    ...item,
+                                    priceType: checked ? "saleOptom" : "sale",
+                                    price: checked ? item.salePriceOptom : item.salePrice
+                                };
+                            }
+                            return item;
+                        });
+                        setBasket(newData);
+                    }}
+                />
             )
-          },
-          
+        },
+
         { title: "Jami sotish summasi", render: (_, record) => (record.price * record.quantity).toLocaleString() },
         {
             title: "O'chirish", render: (_, record) => (
@@ -429,6 +433,7 @@ const Sale = () => {
                                                 stockDate: record.date,
                                                 price: record.salePrice,
                                                 priceType: 'sale'
+
                                             }]);
                                             setStockSelectModal(false);
                                             setStockSelectData({});
@@ -483,6 +488,14 @@ const Sale = () => {
                                 <PiCashRegisterBold />
                             </Button>
                         </Popconfirm>
+                        <Switch
+                            checked={useOptomPrice}
+                            onChange={(checked) => setUseOptomPrice(checked)}
+                            checkedChildren="Optom"
+                            unCheckedChildren="Oddiy"
+                            title="Optom narxda qo‘shish"
+                        />
+
                     </Space>
                 </div>
                 <Table size='small' style={{ overflowX: "auto" }} columns={productsColumns} dataSource={data} loading={barcodeIsLoading || nameIsLoading} />
