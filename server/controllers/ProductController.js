@@ -105,8 +105,8 @@ exports.getProductsByName = async (req, res) => {
 exports.getPaginatedProducts = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
         const { storeId } = req.user;
-        const limit = 10;
         const skip = (page - 1) * limit;
 
         const allProducts = await Product.find().lean();

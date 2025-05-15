@@ -1,15 +1,20 @@
 import React, { useEffect, useState } from 'react';
-import { DatePicker, Spin } from 'antd';
+import { Card, Col, DatePicker, Row, Spin, Statistic } from 'antd';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { useLazyGetSalesByDateQuery } from '../context/service/sale.service';
+import { useGetSalesQuery, useLazyGetSalesByDateQuery } from '../context/service/sale.service';
 import dayjs from 'dayjs';
 import 'dayjs/locale/uz';
+import { useGetImportsQuery } from '../context/service/import.service';
+import { PiChartLineDown, PiChartLineUp } from "react-icons/pi";
+
 dayjs.locale('uz');
 
 const { RangePicker } = DatePicker;
 
 const Statistics = () => {
     const [getSalesByDate, { data: sales = [], isLoading }] = useLazyGetSalesByDateQuery();
+    const { data: allSales = [], isLoading: salesLoading } = useGetSalesQuery()
+    const { data: allImports = [], isLoading: importsLoading } = useGetImportsQuery()
     const [dateRange, setDateRange] = useState([
         dayjs().subtract(6, 'day'),
         dayjs()
@@ -40,8 +45,37 @@ const Statistics = () => {
     }));
 
     return (
-        <div className='statistics' style={{ padding: 24 }}>
-            <div className="statistics-header" style={{ marginBottom: 24 }}>
+        <div className='statistics'>
+            <Row gutter={16}>
+                <Col span={12}>
+                    <Card variant="borderless">
+                        <Statistic
+                            title="Umumiy qarzdorlik"
+                            value={allImports.filter(i => i.isDebt).reduce((acc, i) => acc + i.totalAmount - i.paidAmount, 0)}
+                            precision={2}
+                            valueStyle={{ color: '#cf1322' }}
+                            prefix={<PiChartLineDown />}
+                            suffix="UZS"
+                        />
+                    </Card>
+                </Col>
+                <Col span={12}>
+                    <Card variant="borderless">
+                        <Statistic
+                            title="Umumiy haqdorlik"
+                            value={allSales.filter(i => i.isDebt).reduce((acc, i) => acc + i.totalAmount - i.paidAmount, 0)}
+                            precision={2}
+                            valueStyle={{ color: '#3f8600' }}
+                            prefix={<PiChartLineUp />}
+                            suffix="UZS"
+                        />
+                    </Card>
+                </Col>
+            </Row>
+
+
+
+            {/* <div className="statistics-header" style={{ marginBottom: 24 }}>
                 <RangePicker
                     value={dateRange}
                     onChange={(dates) => {
@@ -83,7 +117,7 @@ const Statistics = () => {
                         </LineChart>
                     </ResponsiveContainer>
                 )}
-            </div>
+            </div> */}
         </div>
     );
 };

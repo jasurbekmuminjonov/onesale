@@ -18,12 +18,13 @@ export const productApi = api.injectEndpoints({
       providesTags: ["Product"],
     }),
     getProductByPage: builder.query({
-      query: (page) => ({
-        url: `/product?page=${page}`,
+      query: ({ page = 1, limit = 10 }) => ({
+        url: `/product?page=${page}&limit=${limit}`,
         method: "GET",
       }),
       providesTags: ["Product"],
     }),
+
     getProductByName: builder.query({
       query: (name) => ({
         url: `/product/name?name=${encodeURIComponent(name)}`,

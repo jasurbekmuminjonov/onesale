@@ -36,9 +36,9 @@ const Products = () => {
     const [searchType, setSearchType] = useState(false)
     const [data, setData] = useState([])
     const inputRef = useRef()
-    const [getProductByBarcode, { data: barcodeData, isLoading: barcodeIsLoading, error: barcodeError }] = useLazyGetProductByBarcodeQuery()
-    const [getProductByPage, { data: pageData, isLoading: pageIsLoading, error: pageError }] = useLazyGetProductByPageQuery()
-    const [getProductByName, { data: nameData, isLoading: nameIsLoading, error: nameError }] = useLazyGetProductByNameQuery()
+    const [getProductByBarcode, { data: barcodeData, isLoading: barcodeIsLoading, isFetching: barcodeIsFetching, error: barcodeError }] = useLazyGetProductByBarcodeQuery()
+    const [getProductByPage, { data: pageData, isLoading: pageIsLoading, isFetching: pageIsFetching, error: pageError }] = useLazyGetProductByPageQuery()
+    const [getProductByName, { data: nameData, isLoading: nameIsLoading, isFetching: nameIsFetching, error: nameError }] = useLazyGetProductByNameQuery()
     const [currentTab, setCurrentTab] = useState('1')
     const [selectedItem, setSelectedItem] = useState("");
     const [filters, setFilters] = useState({
@@ -62,37 +62,36 @@ const Products = () => {
         current: 1,
         pageSize: 10,
         total: 0,
+        showSizeChanger: true,
     });
     useEffect(() => {
-        if (value) {
-            return
-        } else {
-            getProductByPage(pagination.current).unwrap().then((res) => {
+        if (!value.trim()) {
+            getProductByPage({ page: pagination.current, limit: pagination.pageSize }).unwrap().then((res) => {
                 setData(res.data || []);
-                setPagination({
-                    ...pagination,
+                setPagination((prev) => ({
+                    ...prev,
                     total: res?.total || 0,
-                });
+                }));
             });
         }
-    }, [pagination.current]);
+    }, [pagination.current, pagination.pageSize]);
+
 
     const handleTableChange = async (pagination) => {
         try {
-            if (value) {
-                setPagination(pagination);
-            } else {
-                const res = await getProductByPage(pagination.current).unwrap();
-                setData(res.data || []);
-                setPagination({
-                    ...pagination,
-                    total: res?.total || 0,
-                });
-            }
+            setPagination({
+                ...pagination,
+            });
+            const res = await getProductByPage({
+                page: pagination.current,
+                limit: pagination.pageSize,
+            }).unwrap();
+            setData(res.data || []);
         } catch (err) {
             console.error(err);
         }
     };
+
     const columns = [
         { title: "№", render: (text, record, index) => (index + 1) },
         { title: "Mahsulot nomi", dataIndex: "productName" },
@@ -189,6 +188,7 @@ const Products = () => {
     }, []);
 
     async function handleSearch(value) {
+        setValue(value);
         try {
             if (!value) {
                 const res = await getProductByPage(pagination.current).unwrap()
@@ -418,7 +418,7 @@ const Products = () => {
             >
                 <Tabs.TabPane tab="Mahsulotlar" key="1">
                     <Table pagination={pagination}
-                        onChange={handleTableChange} style={{ overflowX: "auto" }} size="small" dataSource={data} loading={barcodeIsLoading || nameIsLoading || pageIsLoading} columns={columns} />
+                        onChange={handleTableChange} style={{ overflowX: "auto" }} size="small" dataSource={data} loading={barcodeIsLoading || nameIsLoading || pageIsLoading || barcodeIsFetching || nameIsFetching || pageIsFetching} columns={columns} />
                 </Tabs.TabPane>
                 <Tabs.TabPane tab="Mahsulot qo'shish" key="2">
                     <Form
