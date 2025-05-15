@@ -17,8 +17,7 @@ const DailySaleSchema = new mongoose.Schema({
         ref: 'Sale',
     },
     date: {
-        type: Date,
-        default: Date.now
+        type: String
     },
     status: {
         type: String,
