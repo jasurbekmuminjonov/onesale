@@ -10,13 +10,14 @@ export const productApi = api.injectEndpoints({
       }),
       invalidatesTags: ["Product"],
     }),
-    getProductByBarcode: builder.query({
-      query: (barcode) => ({
-        url: `/product/barcode?barcode=${barcode}`,
-        method: "GET",
-      }),
-      providesTags: ["Product"],
-    }),
+getProductByBarcode: builder.query({
+  query: ({ barcode, page = 1, limit = 10 }) => ({
+    url: `/product/barcode?barcode=${encodeURIComponent(barcode)}&page=${page}&limit=${limit}`,
+    method: "GET",
+  }),
+  providesTags: ["Product"],
+}),
+
     getProductByPage: builder.query({
       query: ({ page = 1, limit = 10 }) => ({
         url: `/product?page=${page}&limit=${limit}`,
@@ -26,12 +27,13 @@ export const productApi = api.injectEndpoints({
     }),
 
     getProductByName: builder.query({
-      query: (name) => ({
-        url: `/product/name?name=${encodeURIComponent(name)}`,
+      query: ({ name, page = 1, limit = 10 }) => ({
+        url: `/product/name?name=${encodeURIComponent(name)}&page=${page}&limit=${limit}`,
         method: "GET",
       }),
       providesTags: ["Product"],
     }),
+
     updateProduct: builder.mutation({
       query: ({ id, body }) => ({
         url: `/product/${id}`,

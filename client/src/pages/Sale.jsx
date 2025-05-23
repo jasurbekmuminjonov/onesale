@@ -7,6 +7,8 @@ import moment from 'moment';
 import { useCreateDailySaleMutation, useCreateSaleMutation, useEndDailySaleMutation, useGetDailySaleQuery } from '../context/service/sale.service';
 import emptyCart from '../assets/cart.png'
 import { PiCashRegisterBold } from "react-icons/pi";
+import { AutoComplete } from "antd";
+
 
 const Sale = () => {
     const [getProductByBarcode, { data: barcodeData, isLoading: barcodeIsLoading, error: barcodeError }] = useLazyGetProductByBarcodeQuery()
@@ -14,6 +16,69 @@ const Sale = () => {
     const [data, setData] = useState([])
     const inputRef = useRef()
     const [useOptomPrice, setUseOptomPrice] = useState(false);
+    const [searchText, setSearchText] = useState("");
+    const [suggestions, setSuggestions] = useState([]);
+
+const handleSearchSuggestions = async (text) => {
+    setSearchText(text);
+    try {
+        const isBarcode = /^\d{5,}$/.test(text);
+        let res;
+        if (isBarcode) {
+            res = await getProductByBarcode({ barcode: text, page: 1, limit: 10 }).unwrap();
+        } else {
+            res = await getProductByName({ name: text, page: 1, limit: 10 }).unwrap();
+        }
+
+        const results = res?.data || [];
+
+        if (results.length === 1) {
+            const product = results[0];
+            const availableStocks = product.stock?.filter(s => s.quantity > 0) || [];
+
+            if (availableStocks.length === 0) {
+                message.error("Omborda mavjud mahsulot yo'q");
+                return;
+            }
+
+            const selectedStock =
+                availableStocks.length === 1
+                    ? availableStocks[0]
+                    : availableStocks.sort((a, b) => new Date(a.date) - new Date(b.date))[0];
+
+            const alreadyInBasket = basket.find(
+                item =>
+                    item._id === product._id &&
+                    new Date(item.stockDate).getTime() === new Date(selectedStock.date).getTime()
+            );
+
+            if (alreadyInBasket) {
+                message.error("Mahsulot allaqachon tanlangan");
+            } else {
+                setBasket([
+                    ...basket,
+                    {
+                        ...product,
+                        quantity: 1,
+                        stockDate: selectedStock.date,
+                        price: useOptomPrice ? selectedStock.salePriceOptom : selectedStock.salePrice,
+                        priceType: useOptomPrice ? 'saleOptom' : 'sale',
+                    }
+                ]);
+            }
+
+            // input tozalash
+            setSearchText("");
+            setSuggestions([]);
+        } else {
+            // Ko‘p natija bo‘lsa — foydalanuvchiga tanlash imkoniyati uchun ko‘rsatamiz
+            setSuggestions(results);
+        }
+    } catch (err) {
+        console.error("Qidiruvda xatolik:", err);
+        setSuggestions([]);
+    }
+};
 
 
     const { data: dailySale = {} } = useGetDailySaleQuery()
@@ -54,56 +119,56 @@ const Sale = () => {
         };
     }, []);
 
-    async function handleSearch(e) {
-        try {
-            if (!searchType) {
-                const res = await getProductByBarcode(e.target.value).unwrap()
-                if (res.length === 1) {
-                    const product = res[0]
-                    const availableStocks = product.stock.filter(item => item.quantity > 0)
+    // async function handleSearch(e) {
+    //     try {
+    //         if (!searchType) {
+    //             const res = await getProductByBarcode(e.target.value).unwrap()
+    //             if (res.length === 1) {
+    //                 const product = res[0]
+    //                 const availableStocks = product.stock.filter(item => item.quantity > 0)
 
-                    if (availableStocks.length > 1) {
-                        setStockSelectData(product)
-                        setStockSelectModal(true)
-                    } else if (availableStocks.length === 1) {
-                        const stock = availableStocks[0]
-                        const existingProduct = basket.find(
-                            item =>
-                                item._id === product._id &&
-                                new Date(item.stockDate).getTime() === new Date(stock.date).getTime()
-                        )
+    //                 if (availableStocks.length > 1) {
+    //                     setStockSelectData(product)
+    //                     setStockSelectModal(true)
+    //                 } else if (availableStocks.length === 1) {
+    //                     const stock = availableStocks[0]
+    //                     const existingProduct = basket.find(
+    //                         item =>
+    //                             item._id === product._id &&
+    //                             new Date(item.stockDate).getTime() === new Date(stock.date).getTime()
+    //                     )
 
-                        if (existingProduct) {
-                            message.error("Mahsulot allaqachon tanlangan")
-                        } else {
-                            setBasket([
-                                ...basket,
-                                {
-                                    ...product,
-                                    quantity: 1,
-                                    stockDate: stock.date,
-                                    price: useOptomPrice ? stock.salePriceOptom : stock.salePrice,
-                                    priceType: useOptomPrice ? 'saleOptom' : 'sale'
+    //                     if (existingProduct) {
+    //                         message.error("Mahsulot allaqachon tanlangan")
+    //                     } else {
+    //                         setBasket([
+    //                             ...basket,
+    //                             {
+    //                                 ...product,
+    //                                 quantity: 1,
+    //                                 stockDate: stock.date,
+    //                                 price: useOptomPrice ? stock.salePriceOptom : stock.salePrice,
+    //                                 priceType: useOptomPrice ? 'saleOptom' : 'sale'
 
-                                }
-                            ])
-                        }
-                    } else {
-                        message.error("Omborda mavjud mahsulot yo'q")
-                    }
-                } else {
-                    setData(res)
-                }
-                e.target.value = ""
-                e.current.focus()
-            } else {
-                const res = await getProductByName(e.target.value).unwrap()
-                setData(res)
-            }
-        } catch (err) {
-            console.log(err)
-        }
-    }
+    //                             }
+    //                         ])
+    //                     }
+    //                 } else {
+    //                     message.error("Omborda mavjud mahsulot yo'q")
+    //                 }
+    //             } else {
+    //                 setData(res)
+    //             }
+    //             e.target.value = ""
+    //             e.current.focus()
+    //         } else {
+    //             const res = await getProductByName(e.target.value).unwrap()
+    //             setData(res)
+    //         }
+    //     } catch (err) {
+    //         console.log(err)
+    //     }
+    // }
 
     const productsColumns = [
         { title: "№", render: (text, record, index) => (index + 1) },
@@ -173,11 +238,11 @@ const Sale = () => {
     const basketColumns = [
         { title: "№", render: (text, record, index) => (index + 1) },
         { title: "Mahsulot nomi", dataIndex: "productName" },
-        {
-            title: "Sotib olish narxi",
-            dataIndex: "purchasePrice",
-            render: (text) => text.toLocaleString(),
-        },
+        // {
+        //     title: "Sotib olish narxi",
+        //     dataIndex: "purchasePrice",
+        //     render: (text) => text.toLocaleString(),
+        // },
         {
             title: "Sotuv miqdori",
             dataIndex: "quantity",
@@ -202,28 +267,6 @@ const Sale = () => {
                 />
             ),
         },
-        {
-            title: "Optom sotish?",
-            render: (_, record) => (
-                <Switch
-                    checked={record.priceType === "saleOptom"}
-                    onChange={(checked) => {
-                        const newData = basket.map((item) => {
-                            if (item._id === record._id && item.stockDate === record.stockDate) {
-                                return {
-                                    ...item,
-                                    priceType: checked ? "saleOptom" : "sale",
-                                    price: checked ? item.salePriceOptom : item.salePrice
-                                };
-                            }
-                            return item;
-                        });
-                        setBasket(newData);
-                    }}
-                />
-            )
-        },
-
         { title: "Jami sotish summasi", render: (_, record) => (record.price * record.quantity).toLocaleString() },
         {
             title: "O'chirish", render: (_, record) => (
@@ -354,6 +397,42 @@ const Sale = () => {
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, []);
 
+    const handleSelectProduct = (productId) => {
+        const selectedProduct = suggestions.find((item) => item._id === productId);
+        if (!selectedProduct) return;
+
+        const availableStocks = selectedProduct.stock?.filter(item => item.quantity > 0) || [];
+        if (availableStocks.length === 0) {
+            return message.error("Omborda mavjud mahsulot yo'q");
+        }
+
+        const selectedStock = availableStocks.sort((a, b) => new Date(a.date) - new Date(b.date))[0];
+
+        const alreadyInBasket = basket.find(
+            item =>
+                item._id === selectedProduct._id &&
+                new Date(item.stockDate).getTime() === new Date(selectedStock.date).getTime()
+        );
+        if (alreadyInBasket) {
+            return message.error("Mahsulot allaqachon tanlangan");
+        }
+
+        setBasket([
+            ...basket,
+            {
+                ...selectedProduct,
+                quantity: 1,
+                stockDate: selectedStock.date,
+                price: useOptomPrice ? selectedStock.salePriceOptom : selectedStock.salePrice,
+                priceType: useOptomPrice ? "saleOptom" : "sale"
+            }
+        ]);
+
+        setSearchText("");
+        setSuggestions([]);
+    };
+
+
     return (
         <div className='sale' style={{ display: "flex", height: "100%" }} >
             <Modal open={createCustomerModal} title="Yangi xaridor qo'shish" footer={[]} onCancel={() => {
@@ -449,15 +528,23 @@ const Sale = () => {
                 />
             </Modal>
 
-            <div style={{ width: "50%", borderRight: "1px solid #ccc", padding: "0 5px" }}>
+            <div style={{ width: "70%", borderRight: "1px solid #ccc", padding: "0 5px" }}>
                 <div className="products-header" style={{ display: "flex", gap: "12px", padding: "12px" }}>
                     <Space>
-                        <Input ref={inputRef} onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                                handleSearch(e);
-                            }
-                        }} autoFocus style={{ width: "500px", height: "50px", fontSize: "20px" }} onSubmit={(e) => handleSearch(e)} placeholder={!searchType ? "Barkod bilan qidirish" : "Nomi bilan qidirish"} />
-                        <Switch title="Qidiruv turini almashtirish" value={searchType} checkedChildren="Nomi" unCheckedChildren="Barkod" onChange={(value) => setSearchType(value)} />
+                        <AutoComplete
+                            ref={inputRef}
+                            style={{ width: 500, height: 50, fontSize: 20 }}
+                            placeholder={"Barkod yoki nomi bilan qidirish"}
+                            value={searchText}
+                            onChange={(text) => setSearchText(text)}
+                            onSearch={handleSearchSuggestions}
+                            onSelect={handleSelectProduct}
+                            options={suggestions?.map((item) => ({
+                                value: item._id,
+                                label: `${item.productName} (${item.barcode})`,
+                            }))}
+                        />
+                        {/* <Switch title="Qidiruv turini almashtirish" value={searchType} checkedChildren="Nomi" unCheckedChildren="Barkod" onChange={(value) => setSearchType(value)} /> */}
                         <Popconfirm
                             title={!isDaily ? "Chindan ham kassani ochmoqchimisiz?" : "Chindan ham kassani yopmoqchimisiz?"}
                             onConfirm={async () => {
@@ -498,9 +585,6 @@ const Sale = () => {
 
                     </Space>
                 </div>
-                <Table size='small' style={{ overflowX: "auto" }} columns={productsColumns} dataSource={data} loading={barcodeIsLoading || nameIsLoading} />
-            </div>
-            <div style={{ width: "50%", minHeight: "100%", padding: "5px 5px", display: "flex", flexDirection: "column", gap: "5px" }}>
                 <Table locale={{
                     emptyText:
                         (
@@ -519,11 +603,13 @@ const Sale = () => {
                             </div>
                         )
                 }} pagination={false} size='small' style={{ overflowX: "auto", height: "80%" }} columns={basketColumns} dataSource={basket} />
+            </div>
+            <div style={{ width: "30%", minHeight: "100%", padding: "5px 5px", display: "flex", flexDirection: "column", gap: "5px" }}>
                 <p>Jami to'lov: {basket.reduce((acc, item) => acc + item.quantity * item.price, 0).toLocaleString()}</p>
                 <Form onFinish={handleSubmit} autoComplete='off' style={{ height: "35%", padding: "5px 0", borderTop: "1px solid #ccc" }} form={form} layout='vertical'>
                     <Space direction='vertical' style={{ width: "100%" }}>
                         <Row gutter={16}>
-                            <Col span={8}>
+                            <Col span={24}>
                                 <Form.Item label="Xaridor(ixtiyoriy)" name="customerId">
                                     <Select loading={customersLoading}>
                                         {
@@ -542,12 +628,12 @@ const Sale = () => {
                                     Yangi xaridor qo'shish
                                 </Button>
                             </Col>
-                            <Col span={8}>
+                            <Col span={24}>
                                 <Form.Item initialValue={0} label="To'lov miqdori" name="paidAmount">
                                     <Input type='number' />
                                 </Form.Item>
                             </Col>
-                            <Col span={8}>
+                            <Col span={24}>
                                 <Form.Item label="To'lov usuli" name="paymentMethod" initialValue={'cash'} rules={[{ required: true, message: "To'lov usulini tanlang" }]}>
                                     <Select options={[
                                         { label: "Naqd", value: "cash" },

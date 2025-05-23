@@ -16,19 +16,26 @@ exports.createProduct = async (req, res) => {
 
 exports.getProductByBarcode = async (req, res) => {
     try {
-        const { barcode } = req.query;
-        if (!barcode) return res.json([])
+        const { barcode, page = 1, limit = 10 } = req.query;
+        if (!barcode) return res.status(200).json({ data: [], total: 0 });
+
         const { storeId } = req.user;
-        const product = await Product.find({ barcode });
-        if (!product) return res.status(404).json({ message: "Mahsulot topilmadi" });
 
-        return res.status(200).json(product.filter((item) => item.storeId.toString() === storeId.toString()));
+        const query = { barcode };
 
+        const total = await Product.countDocuments(query);
+        const products = await Product.find(query)
+            .skip((parseInt(page) - 1) * parseInt(limit))
+            .limit(parseInt(limit))
+            .lean();
+
+        return res.status(200).json({ data: products, total });
     } catch (err) {
-        console.log(err.message)
+        console.log(err.message);
         return res.status(500).json({ message: "Serverda xatolik" });
     }
-}
+};
+
 
 exports.updateProduct = async (req, res) => {
     try {
@@ -59,28 +66,30 @@ exports.updateProductStock = async (req, res) => {
     }
 }
 exports.getProductsByName = async (req, res) => {
-    const { name } = req.query;
-    if (!name) return res.json([])
+    const { name, page = 1, limit = 10 } = req.query;
+    if (!name) return res.status(200).json({ data: [], total: 0 });
 
     const decodedName = decodeURIComponent(name);
-    console.log(decodedName);
-
     const { storeId } = req.user;
 
     try {
-        const products = await Product.find(
-            {
-                productName: { $regex: decodedName, $options: 'i' },
-                // storeId: storeId
-            }
-        );
+        const query = {
+            productName: { $regex: decodedName, $options: 'i' },
+        };
 
-        res.status(200).json(products.filter(item => item.storeId.toString() === storeId.toString()));
+        const total = await Product.countDocuments(query);
+        const products = await Product.find(query)
+            .skip((parseInt(page) - 1) * parseInt(limit))
+            .limit(parseInt(limit))
+            .lean();
+
+        res.status(200).json({ data: products, total });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: "Serverda xatolik yuz berdi" });
     }
 };
+
 // exports.getPaginatedProducts = async (req, res) => {
 //     try {
 //         const page = parseInt(req.query.page) || 1;

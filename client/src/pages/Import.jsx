@@ -1,25 +1,76 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Button, Col, Input, message, Row, Space, Table, Typography, Form, Select, Modal, Switch } from 'antd'
 import { FaMinus, FaPlus } from 'react-icons/fa';
-import { useLazyGetProductByBarcodeQuery, useLazyGetProductByNameQuery } from '../context/service/product.service';
+import { useLazyGetProductByBarcodeQuery, useLazyGetProductByNameQuery, useLazyGetProductByPageQuery } from '../context/service/product.service';
 import { useCreateSupplierMutation, useGetSuppliersQuery } from '../context/service/user.service';
 import { useCreateImportMutation } from '../context/service/import.service';
+import { MdOutlineClear } from 'react-icons/md';
 
 const Import = () => {
-    const [getProductByBarcode, { data: barcodeData, isLoading: barcodeIsLoading, error: barcodeError }] = useLazyGetProductByBarcodeQuery()
-    const [getProductByName, { data: nameData, isLoading: nameIsLoading, error: nameError }] = useLazyGetProductByNameQuery()
+    const [getProductByBarcode, { data: barcodeData, isLoading: barcodeIsLoading, isFetching: barcodeIsFetching, error: barcodeError }] = useLazyGetProductByBarcodeQuery()
+    const [getProductByPage, { data: pageData, isLoading: pageIsLoading, isFetching: pageIsFetching, error: pageError }] = useLazyGetProductByPageQuery()
+    const [getProductByName, { data: nameData, isLoading: nameIsLoading, isFetching: nameIsFetching, error: nameError }] = useLazyGetProductByNameQuery()
     const [data, setData] = useState([])
     const inputRef = useRef()
     const [userType, setUserType] = useState("")
     const [createSupplierModal, setCreateSupplierModal] = useState(false)
     const [createSupplier] = useCreateSupplierMutation()
     const [createImport] = useCreateImportMutation()
+    const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 });
+    const [value, setValue] = useState('');
+
     const { data: suppliers, isLoading: suppliersLoading } = useGetSuppliersQuery()
     const [userCreateForm] = Form.useForm()
     const [form] = Form.useForm();
     const [basket, setBasket] = useState([])
     const [searchType, setSearchType] = useState(false)
+    const [searchValue, setSearchValue] = useState('');
 
+
+    const handleTableChange = async (pagination) => {
+        setPagination(pagination);
+        try {
+            const isBarcode = /^\d{5,}$/.test(value);
+            if (value.trim()) {
+                if (isBarcode) {
+                    const res = await getProductByBarcode({
+                        barcode: value,
+                        page: 1,
+                        limit: pagination.pageSize,
+                    }).unwrap();
+                    setData(res.data || []);
+                    setPagination((prev) => ({
+                        ...prev,
+                        total: res?.total || 0,
+                    }));
+
+                } else {
+                    const res = await getProductByName({
+                        name: value,
+                        page: pagination.current,
+                        limit: pagination.pageSize,
+                    }).unwrap();
+                    setData(res.data || []);
+                    setPagination((prev) => ({
+                        ...prev,
+                        total: res?.total || 0,
+                    }));
+                }
+            } else {
+                const res = await getProductByPage({
+                    page: pagination.current,
+                    limit: pagination.pageSize,
+                }).unwrap();
+                setData(res.data || []);
+                setPagination((prev) => ({
+                    ...prev,
+                    total: res?.total || 0,
+                }));
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    };
 
     useEffect(() => {
         const handleContextMenu = (e) => {
@@ -35,30 +86,99 @@ const Import = () => {
         };
     }, []);
 
-    async function handleSearch(e) {
+    async function fetchProducts() {
         try {
-            if (!searchType) {
-                const res = await getProductByBarcode(e.target.value).unwrap()
-                if (res.length === 1) {
-                    const existingProduct = basket.find(item => item._id === res[0]._id)
-                    if (existingProduct) {
-                        message.error("Mahsulot allaqachon tanlangan")
-                    } else {
-                        setBasket([...basket, { ...res[0], quantity: 1 }])
-                    }
+            const isBarcode = /^\d{5,}$/.test(searchValue);
+            const params = { page: pagination.current, limit: pagination.pageSize };
+            let res;
+            if (searchValue.trim()) {
+                if (isBarcode) {
+                    res = await getProductByBarcode({ barcode: searchValue, ...params }).unwrap();
                 } else {
-                    setData(res)
+                    res = await getProductByName({ name: searchValue, ...params }).unwrap();
                 }
-                e.target.value = ""
-                e.current.focus()
+                setData(res.data || []);
+                setPagination(prev => ({ ...prev, total: res.total || 0 }));
             } else {
-                const res = await getProductByName(e.target.value).unwrap()
-                setData(res)
+                setData([]);
+                setPagination(prev => ({ ...prev, total: 0 }));
             }
         } catch (err) {
-            console.log(err)
+            console.error(err);
+            message.error("Qidirishda xatolik yuz berdi");
         }
     }
+    async function handleSearch(value) {
+        setValue(value);
+        setPagination((prev) => ({ ...prev, current: 1 }));
+        try {
+            if (!value.trim()) {
+                const res = await getProductByPage({
+                    page: 1,
+                    limit: pagination.pageSize,
+                }).unwrap();
+                setData(res.data || []);
+                setPagination((prev) => ({
+                    ...prev,
+                    total: res?.total || 0,
+                }));
+                return;
+            }
+
+            const isBarcode = /^\d{5,}$/.test(value);
+            if (isBarcode) {
+                const res = await getProductByBarcode({
+                    barcode: value,
+                    page: 1,
+                    limit: pagination.pageSize,
+                }).unwrap();
+                setData(res.data || []);
+                setPagination((prev) => ({
+                    ...prev,
+                    total: res?.total || 0,
+                }));
+
+            } else {
+                const res = await getProductByName({
+                    name: value,
+                    page: 1,
+                    limit: pagination.pageSize,
+                }).unwrap();
+                setData(res.data || []);
+                setPagination((prev) => ({
+                    ...prev,
+                    total: res?.total || 0,
+                }));
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    // async function handleSearch(e) {
+    //     try {
+    //         if (!searchType) {
+    //             const res = await getProductByBarcode(e.target.value).unwrap()
+    //             if (res.length === 1) {
+    //                 const existingProduct = basket.find(item => item._id === res[0]._id)
+    //                 if (existingProduct) {
+    //                     message.error("Mahsulot allaqachon tanlangan")
+    //                 } else {
+    //                     setBasket([...basket, { ...res[0], quantity: 1 }])
+    //                 }
+    //             } else {
+    //                 setData(res)
+    //             }
+    //             e.target.value = ""
+    //             e.current.focus()
+    //         } else {
+    //             const res = await getProductByName(e.target.value).unwrap()
+    //             setData(res)
+    //         }
+    //     } catch (err) {
+    //         console.log(err)
+    //     }
+    // }
 
     const productsColumns = [
         { title: "№", render: (text, record, index) => (index + 1) },
@@ -223,7 +343,19 @@ const Import = () => {
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, []);
-    console.log(suppliers);
+    const handleClear = async () => {
+        setValue("");
+        if (inputRef.current) {
+            inputRef.current.focus();
+        }
+        try {
+            const data = await getProductByPage(pagination.current).unwrap();
+            setData(data.data || []);
+            setPagination({ ...pagination, total: data.total || 0 });
+        } catch (err) {
+            console.error('Ma\'lumotni olishda xatolik:', err);
+        }
+    };
 
     return (
         <div className='sale' style={{ display: "flex", height: "100%" }} >
@@ -264,16 +396,20 @@ const Import = () => {
             <div style={{ width: "50%", borderRight: "1px solid #ccc", padding: "0 5px" }}>
                 <div className="products-header" style={{ display: "flex", gap: "12px", padding: "12px" }}>
                     <Space>
-                        <Input ref={inputRef} onKeyDown={(e) => {
+                        <Input value={value} onChange={(e) => { setValue(e.target.value); handleSearch(e.target.value) }} suffix={
+                            (
+                                <MdOutlineClear onClick={handleClear} style={{ color: 'rgba(0,0,0,.45)', cursor: 'pointer' }} />
+                            )
+                        } ref={inputRef} onKeyDown={(e) => {
                             if (e.key === 'Enter') {
-                                handleSearch(e);
+                                handleSearch(e.target.value);
                             }
-                        }} autoFocus style={{ width: "500px", height: "50px", fontSize: "20px" }} onSubmit={(e) => handleSearch(e)} placeholder={!searchType ? "Barkod bilan qidirish" : "Nomi bilan qidirish"} />
-                        <Switch title="Qidiruv turini almashtirish" value={searchType} checkedChildren="Nomi" unCheckedChildren="Barkod" onChange={(value) => setSearchType(value)} />
+                        }} autoFocus style={{ width: "500px", height: "50px", fontSize: "20px" }} placeholder={"Barkod yoki nomi bilan qidirish"} onSubmit={(value) => handleSearch(value)} />
+                        {/* <Switch title="Qidiruv turini almashtirish" value={searchType} checkedChildren="Nomi" unCheckedChildren="Barkod" onChange={(value) => setSearchType(value)} /> */}
                     </Space>
                 </div>
-                <Table size='small' style={{ overflowX: "auto" }} columns={productsColumns} dataSource={data} loading={barcodeIsLoading || nameIsLoading} />
-            </div>
+                <Table pagination={pagination}
+                    onChange={handleTableChange} style={{ overflowX: "auto" }} size="small" dataSource={data} loading={barcodeIsLoading || nameIsLoading || barcodeIsFetching || nameIsFetching || pageIsFetching} columns={productsColumns} />            </div>
             <div style={{ width: "50%", minHeight: "100%", padding: "5px 5px", display: "flex", flexDirection: "column", gap: "5px" }}>
                 <Table pagination={false} size='small' style={{ overflowX: "auto", height: "80%" }} columns={basketColumns} dataSource={basket} />
                 <p>Jami to'lov: {basket.reduce((acc, item) => acc + item.quantity * item.purchasePrice, 0).toLocaleString()}</p>
@@ -316,7 +452,7 @@ const Import = () => {
                         <Row gutter={16} >
                             <Col span={12} >
                                 <Form.Item>
-                                    <Button htmlType='submit' type='primary'>Sotish</Button>
+                                    <Button htmlType='submit' type='primary'>Import</Button>
                                 </Form.Item>
                             </Col>
                         </Row>

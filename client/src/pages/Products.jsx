@@ -45,8 +45,9 @@ const Products = () => {
         sort: ''
     });
     const generateRandomBarcode = () => {
-        return Math.floor(100000 + Math.random() * 900000).toString();
+        return Math.floor(1000000000000 + Math.random() * 9000000000000).toString();
     };
+
     const handleSwitchChange = (checked) => {
         setAutoGenerateBarcode(checked);
         if (checked) {
@@ -77,20 +78,54 @@ const Products = () => {
     }, [pagination.current, pagination.pageSize]);
 
 
+
+
     const handleTableChange = async (pagination) => {
+        setPagination(pagination);
         try {
-            setPagination({
-                ...pagination,
-            });
-            const res = await getProductByPage({
-                page: pagination.current,
-                limit: pagination.pageSize,
-            }).unwrap();
-            setData(res.data || []);
+            const isBarcode = /^\d{5,}$/.test(value);
+            if (value.trim()) {
+                if (isBarcode) {
+                    const res = await getProductByBarcode({
+                        barcode: value,
+                        page: 1,
+                        limit: pagination.pageSize,
+                    }).unwrap();
+                    setData(res.data || []);
+                    setPagination((prev) => ({
+                        ...prev,
+                        total: res?.total || 0,
+                    }));
+
+                } else {
+                    const res = await getProductByName({
+                        name: value,
+                        page: pagination.current,
+                        limit: pagination.pageSize,
+                    }).unwrap();
+                    setData(res.data || []);
+                    setPagination((prev) => ({
+                        ...prev,
+                        total: res?.total || 0,
+                    }));
+                }
+            } else {
+                const res = await getProductByPage({
+                    page: pagination.current,
+                    limit: pagination.pageSize,
+                }).unwrap();
+                setData(res.data || []);
+                setPagination((prev) => ({
+                    ...prev,
+                    total: res?.total || 0,
+                }));
+            }
         } catch (err) {
             console.error(err);
         }
     };
+
+
 
     const columns = [
         { title: "№", render: (text, record, index) => (index + 1) },
@@ -189,37 +224,52 @@ const Products = () => {
 
     async function handleSearch(value) {
         setValue(value);
+        setPagination((prev) => ({ ...prev, current: 1 }));
         try {
-            if (!value) {
-                const res = await getProductByPage(pagination.current).unwrap()
-                setData(res)
-                setPagination({
-                    ...pagination,
-                    total: res?.data.length || 0,
-                })
-                return
-            } else {
+            if (!value.trim()) {
+                const res = await getProductByPage({
+                    page: 1,
+                    limit: pagination.pageSize,
+                }).unwrap();
+                setData(res.data || []);
+                setPagination((prev) => ({
+                    ...prev,
+                    total: res?.total || 0,
+                }));
+                return;
+            }
 
-                if (!searchType) {
-                    const res = await getProductByBarcode(value).unwrap()
-                    setData(res)
-                    setPagination({
-                        ...pagination,
-                        total: res?.length || 0,
-                    })
-                } else {
-                    const res = await getProductByName(value).unwrap()
-                    setData(res)
-                    setPagination({
-                        ...pagination,
-                        total: res?.length || 0,
-                    })
-                }
+            const isBarcode = /^\d{5,}$/.test(value);
+            if (isBarcode) {
+                const res = await getProductByBarcode({
+                    barcode: value,
+                    page: 1,
+                    limit: pagination.pageSize,
+                }).unwrap();
+                setData(res.data || []);
+                setPagination((prev) => ({
+                    ...prev,
+                    total: res?.total || 0,
+                }));
+
+            } else {
+                const res = await getProductByName({
+                    name: value,
+                    page: 1,
+                    limit: pagination.pageSize,
+                }).unwrap();
+                setData(res.data || []);
+                setPagination((prev) => ({
+                    ...prev,
+                    total: res?.total || 0,
+                }));
             }
         } catch (err) {
-            console.log(err)
+            console.error(err);
         }
     }
+
+
     useEffect(() => {
         const handleKeyDown = (e) => {
             if (e.code === "Space") {
@@ -328,7 +378,6 @@ const Products = () => {
     }, [filters]);
 
 
-
     return (
         <div className='products'>
             <Modal width={600} open={isOpen} onCancel={() => {
@@ -393,7 +442,7 @@ const Products = () => {
             </Modal>
             <div className="products-header" style={{ display: "flex", gap: "12px", padding: "12px" }}>
                 <Space>
-                    <Input value={value} onChange={(e) => setValue(e.target.value)} suffix={
+                    <Input value={value} onChange={(e) => { setValue(e.target.value); handleSearch(e.target.value) }} suffix={
                         (
                             <MdOutlineClear onClick={handleClear} style={{ color: 'rgba(0,0,0,.45)', cursor: 'pointer' }} />
                         )
@@ -401,8 +450,7 @@ const Products = () => {
                         if (e.key === 'Enter') {
                             handleSearch(e.target.value);
                         }
-                    }} autoFocus style={{ width: "500px", height: "50px", fontSize: "20px" }} placeholder={!searchType ? "Barkod bilan qidirish" : "Nomi bilan qidirish"} onSubmit={(value) => handleSearch(value)} />
-                    <Switch title="Qidiruv turini almashtirish" value={searchType} checkedChildren="Nomi" unCheckedChildren="Barkod" onChange={(value) => setSearchType(value)} />
+                    }} autoFocus style={{ width: "500px", height: "50px", fontSize: "20px" }} placeholder={"Barkod yoki nomi bilan qidirish"} onSubmit={(value) => handleSearch(value)} />
                     <Select onChange={(value) => setFilters({ ...filters, sort: value })} defaultValue="Saralash" style={{ width: 200 }}>
                         <Select.Option value="">Saralashsiz</Select.Option>
                         <Select.Option value="quantity_inc">Miqdor: birinchi kam</Select.Option>
@@ -453,7 +501,7 @@ const Products = () => {
 
                             <Col span={8}>
                                 <Form.Item label="O'lchov birlik" name="unitMeasure" rules={[{ required: true, message: "O'lchov birlikni tanlash shart" }]}>
-                                    <Select defaultValue="Штука" options={[
+                                    <Select defaultActiveFirstOption="Штука" options={[
                                         { label: "Штука", value: "Штука" },
                                         { label: "Грамм", value: "Грамм" },
                                         { label: "Литр", value: "Литр" },

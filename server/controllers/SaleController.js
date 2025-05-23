@@ -140,93 +140,79 @@ exports.endDailySale = async (req, res) => {
 }
 
 exports.createReturn = async (req, res) => {
-    try {
-        const { productId, stockDate, saleId, quantity, reason } = req.body;
-        const { storeId } = req.user;
+  try {
+    const { products, saleId } = req.body;
+    const { storeId } = req.user;
 
-        const product = await Product.findById(productId);
-        if (!product) {
-            return res.status(404).json({ message: 'Mahsulot topilmadi' });
-        }
+    const sale = await Sale.findById(saleId);
+    if (!sale) return res.status(404).json({ message: "Sotuv topilmadi" });
 
-        const sale = await Sale.findById(saleId);
-        if (!sale) {
-            return res.status(404).json({ message: 'Sotuv topilmadi' });
-        }
+    for (const returned of products) {
+      const { productId, stockDate, quantity, reason } = returned;
 
-        const soldProduct = sale.products.find(item =>
-            item.productId.toString() === productId.toString() &&
-            new Date(item.stockDate).getTime() === new Date(stockDate).getTime()
-        );
+      const product = await Product.findById(productId);
+      if (!product) return res.status(404).json({ message: `Mahsulot topilmadi: ${productId}` });
 
-        if (!soldProduct) {
-            return res.status(400).json({ message: 'Sotuv ichida mos mahsulot topilmadi' });
-        }
+      const soldProduct = sale.products.find(p =>
+        p.productId.toString() === productId.toString() &&
+        new Date(p.stockDate).getTime() === new Date(stockDate).getTime()
+      );
 
-        if (soldProduct.quantity < quantity) {
-            return res.status(400).json({ message: 'Qaytarilayotgan miqdor sotilganidan ko\'p bo\'lishi mumkin emas' });
-        }
+      if (!soldProduct || soldProduct.quantity < quantity) {
+        return res.status(400).json({ message: 'Qaytarilayotgan mahsulot mos kelmadi yoki miqdor xato' });
+      }
 
-        const formatDate = (date) => new Date(date).toISOString().split('T')[0];
+      // Ombordagi mahsulotni yangilash
+      const formatDate = d => new Date(d).toISOString().split('T')[0];
+      const stockItem = product.stock.find(s => formatDate(s.date) === formatDate(stockDate));
+      if (!stockItem) return res.status(400).json({ message: 'Omborda mos sana topilmadi' });
 
-        const stockItem = product.stock.find(item =>
-            formatDate(item.date) === formatDate(stockDate)
-        );
+      stockItem.quantity += quantity;
+      stockItem.totalSold -= quantity;
+      await product.save();
 
-
-
-        if (!stockItem) {
-            return res.status(400).json({ message: 'Mahsulot omborida mos sana topilmadi' });
-        }
-
-        stockItem.quantity += quantity;
-        stockItem.totalSold -= quantity;
-
-        await product.save();
-
-        soldProduct.quantity -= quantity;
-        sale.totalAmount -= (soldProduct.price * quantity);
-        sale.paidAmount = Math.min(sale.paidAmount, sale.totalAmount);
-        await sale.save();
-
-        if (sale.totalAmount <= 0) {
-            await Sale.findByIdAndDelete(sale._id);
-        }
-        
-
-
-        const returnedProduct = new ReturnedProduct({
-            productId,
-            stockDate,
-            saleId,
-            quantity,
-            reason,
-            storeId
-        });
-
-        await returnedProduct.save();
-
-        res.status(201).json({ message: 'Mahsulot muvaffaqiyatli qaytarildi' });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server xatosi', error: error.message });
+      // Sotuvni yangilash
+      soldProduct.quantity -= quantity;
+      sale.totalAmount -= (soldProduct.price * quantity);
+      sale.paidAmount = Math.min(sale.paidAmount, sale.totalAmount);
     }
+
+    await sale.save();
+    if (sale.totalAmount <= 0) await Sale.findByIdAndDelete(sale._id);
+
+    const returnedProduct = new ReturnedProduct({
+      saleId,
+      storeId,
+      products
+    });
+    await returnedProduct.save();
+
+    res.status(201).json({ message: "Mahsulotlar muvaffaqiyatli qaytarildi" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server xatosi", error: error.message });
+  }
 };
 
 
 
 
-exports.getReturns = async (req, res) => {
-    try {
-        const { storeId } = req.user;
-        const returns = await ReturnedProduct.find({ storeId }).populate('productId').populate('saleId');
-        res.json(returns);
 
-    } catch (err) {
-        console.log(err.message)
-        return res.status(500).json({ message: "Serverda xatolik" });
-    }
-}
+exports.getReturns = async (req, res) => {
+  try {
+    const { storeId } = req.user;
+
+    const returns = await ReturnedProduct.find({ storeId })
+      .populate('saleId')
+      .populate('products.productId');
+
+    res.json(returns);
+  } catch (err) {
+    console.log(err.message);
+    res.status(500).json({ message: "Serverda xatolik" });
+  }
+};
+
 
 
 exports.getSalesByDateRange = async (req, res) => {

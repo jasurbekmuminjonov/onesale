@@ -9,6 +9,8 @@ import {
   InputNumber,
   message,
   Spin,
+  Space,
+  Popover,
 } from "antd";
 import { useCreateReturnMutation, useGetReturnsQuery } from "../context/service/return.service";
 import { useGetSalesQuery } from "../context/service/sale.service";
@@ -19,7 +21,7 @@ const { TabPane } = Tabs;
 const ReturnProduct = () => {
   const [saleIdInput, setSaleIdInput] = useState("");
   const [selectedSale, setSelectedSale] = useState(null);
-  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [selectedProducts, setSelectedProducts] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [form] = Form.useForm();
 
@@ -33,27 +35,25 @@ const ReturnProduct = () => {
     setSelectedSale(found);
   };
 
-  const handleOpenModal = (product) => {
-    setSelectedProduct(product);
-    setIsModalVisible(true);
-  };
-
   const handleReturn = async () => {
     try {
       const values = await form.validateFields();
+      const products = selectedProducts.map((product, index) => ({
+        productId: product?.productId?._id || product?.productId,
+        stockDate: product.stockDate,
+        quantity: values[`quantity_${index}`],
+        reason: values[`reason_${index}`] || '-',
+      }));
+
       const body = {
-        productId: selectedProduct?.productId?._id || selectedProduct?.productId,
-        stockDate: selectedProduct.stockDate,
-        saleId: selectedSale?._id,
-        quantity: values.quantity,
-        reason: values.reason,
-        storeId: selectedSale.storeId,
+        saleId: selectedSale._id,
+        products,
       };
 
       await createReturn(body).unwrap();
-      message.success("Tovar muvaffaqiyatli qaytarildi");
+      message.success("Tanlangan mahsulotlar muvaffaqiyatli qaytarildi");
       setIsModalVisible(false);
-      setSelectedProduct(null);
+      setSelectedProducts([]);
       setSelectedSale(null);
       setSaleIdInput("");
       form.resetFields();
@@ -69,7 +69,7 @@ const ReturnProduct = () => {
       key: "productName",
     },
     {
-      title: "Omborga qo‘shilgan sana",
+      title: "Sana",
       dataIndex: "stockDate",
       key: "stockDate",
       render: (text) => new Date(text).toLocaleDateString(),
@@ -83,39 +83,76 @@ const ReturnProduct = () => {
       title: "Narxi",
       dataIndex: "price",
       key: "price",
-    },
-    {
-      title: "Amal",
-      key: "action",
-      render: (_, record) => (
-        <Button type="primary" onClick={() => handleOpenModal(record)}>
-          Qaytarish
-        </Button>
-      ),
-    },
+    }
   ];
 
+  const rowSelection = {
+    selectedRowKeys: selectedProducts.map(
+      (p) => `${p.productId?._id || p.productId}-${p.stockDate}`
+    ),
+    onChange: (_, selectedRows) => {
+      setSelectedProducts(selectedRows);
+    },
+    getCheckboxProps: (record) => ({
+      disabled: record.quantity <= 0,
+    }),
+  };
+
+  const renderProductsPopover = (products) => {
+    const columns = [
+      {
+        title: "Mahsulot",
+        dataIndex: ["productId", "productName"],
+        key: "productName",
+      },
+      {
+        title: "Sana",
+        dataIndex: "stockDate",
+        key: "stockDate",
+        render: (text) => moment(text).format("DD.MM.YYYY"),
+      },
+      {
+        title: "Miqdori",
+        dataIndex: "quantity",
+        key: "quantity",
+      },
+      {
+        title: "Sabab",
+        dataIndex: "reason",
+        key: "reason",
+      },
+    ];
+
+    return (
+      <Table
+        columns={columns}
+        dataSource={products}
+        rowKey={(record, index) => `${record.productId?._id || "prod"}-${index}`}
+        size="small"
+        pagination={false}
+      />
+    );
+  };
   const returnColumns = [
     {
-      title: "Mahsulot",
-      dataIndex: ["productId", "productName"],
-      key: "productName",
+      title: "Mahsulotlar",
+      key: "products",
+      render: (_, record) => (
+        <Popover
+          title="Qaytarilgan mahsulotlar"
+          content={renderProductsPopover(record.products)}
+          trigger="click"
+          placement="rightTop"
+        >
+          <Button type="link">Mahsulotlarni ko‘rish</Button>
+        </Popover>
+      ),
     },
     {
       title: "Qaytarilgan sana",
       dataIndex: "date",
       key: "date",
       render: (text) => moment(text).format("DD.MM.YYYY HH:mm"),
-    },
-    {
-      title: "Miqdori",
-      dataIndex: "quantity",
-      key: "quantity",
-    },
-    {
-      title: "Sabab",
-      dataIndex: "reason",
-      key: "reason",
     },
   ];
 
@@ -136,12 +173,31 @@ const ReturnProduct = () => {
           {isSalesLoading ? (
             <Spin />
           ) : selectedSale ? (
-            <Table
-              columns={saleColumns}
-              dataSource={selectedSale.products}
-              rowKey={(record) => record.productId?._id || record.productId}
-              pagination={false}
-            />
+            <>
+              <Table
+                columns={saleColumns}
+                dataSource={selectedSale.products}
+                rowSelection={{
+                  type: "checkbox",
+                  ...rowSelection,
+                  getCheckboxProps: (record) => ({
+                    disabled: record.quantity <= 0,
+                  }),
+                }}
+                rowKey={(record) =>
+                  `${record.productId?._id || record.productId}-${record.stockDate}`
+                }
+                pagination={false}
+              />
+              <Button
+                type="primary"
+                style={{ marginTop: 16 }}
+                disabled={selectedProducts.length === 0}
+                onClick={() => setIsModalVisible(true)}
+              >
+                Tanlangan mahsulotlarni qaytarish
+              </Button>
+            </>
           ) : null}
         </TabPane>
 
@@ -156,7 +212,7 @@ const ReturnProduct = () => {
       </Tabs>
 
       <Modal
-        title="Tovarni qaytarish"
+        title="Qaytarish ma'lumotlarini kiriting"
         open={isModalVisible}
         onOk={handleReturn}
         confirmLoading={isCreating}
@@ -168,17 +224,22 @@ const ReturnProduct = () => {
         cancelText="Bekor qilish"
       >
         <Form form={form} layout="vertical">
-          <Form.Item
-            label="Qaytarilayotgan miqdor"
-            name="quantity"
-            rules={[{ required: true, message: "Iltimos, miqdorni kiriting" }]}
-          >
-            <InputNumber min={1} style={{ width: "100%" }} />
-          </Form.Item>
+          {selectedProducts.map((product, index) => (
+            <div key={index} style={{ borderBottom: "1px solid #ddd", marginBottom: 12 }}>
+              <b>{product?.productId?.productName || "Nomaʼlum mahsulot"}</b>
+              <Form.Item
+                name={`quantity_${index}`}
+                label="Miqdori"
+                rules={[{ required: true, message: "Miqdor kiritish shart" }]}
+              >
+                <InputNumber min={1} max={product.quantity} style={{ width: "100%" }} />
+              </Form.Item>
 
-          <Form.Item label="Sabab" name="reason">
-            <Input placeholder="Sabab (ixtiyoriy)" />
-          </Form.Item>
+              <Form.Item name={`reason_${index}`} label="Sabab">
+                <Input placeholder="Qaytarish sababi (ixtiyoriy)" />
+              </Form.Item>
+            </div>
+          ))}
         </Form>
       </Modal>
     </div>
